@@ -1,0 +1,48 @@
+resources/
+├── views/
+│   ├── layouts/                      # Layout chung cho các trang
+│   │   ├── app.blade.php             # Layout chung cho tất cả các trang (header, footer, css, js)
+│   │   ├── admin.blade.php           # Layout dành riêng cho admin (admin-specific assets, sidebar)
+│   │   ├── employee.blade.php        # Layout dành riêng cho nhân viên
+│   │   └── customer.blade.php        # Layout dành riêng cho khách hàng
+│   ├── admin/                        # Views dành riêng cho trang Admin
+│   │   ├── dashboard.blade.php       # Trang Dashboard của Admin
+│   │   ├── products/                 # Quản lý sản phẩm
+│   │   │   ├── index.blade.php      # Danh sách sản phẩm
+│   │   │   ├── create.blade.php     # Thêm sản phẩm mới
+│   │   │   └── edit.blade.php       # Chỉnh sửa sản phẩm
+│   │   ├── orders/                  # Quản lý đơn hàng
+│   │   │   ├── index.blade.php      # Danh sách đơn hàng
+│   │   │   └── show.blade.php       # Chi tiết đơn hàng
+│   │   └── users/                   # Quản lý người dùng
+│   │       ├── index.blade.php      # Danh sách người dùng
+│   │       └── edit.blade.php       # Chỉnh sửa người dùng
+│   ├── employee/                     # Views dành cho nhân viên
+│   │   ├── dashboard.blade.php      # Trang Dashboard của nhân viên
+│   │   ├── inventory/               # Quản lý kho
+│   │   │   ├── index.blade.php      # Danh sách sản phẩm trong kho
+│   │   │   └── update.blade.php     # Cập nhật kho
+│   │   └── orders/                  # Quản lý đơn hàng (nhân viên xử lý đơn)
+│   │       ├── index.blade.php      # Danh sách đơn hàng
+│   │       └── show.blade.php       # Chi tiết đơn hàng
+│   ├── customer/                     # Views dành cho khách hàng
+│   │   ├── home.blade.php           # Trang chủ của khách hàng (các sản phẩm nổi bật, khuyến mãi)
+│   │   ├── products/                # Xem sản phẩm
+│   │   │   ├── index.blade.php      # Danh sách sản phẩm
+│   │   │   └── show.blade.php       # Chi tiết sản phẩm
+│   │   ├── cart/                    # Giỏ hàng
+│   │   │   ├── index.blade.php      # Giỏ hàng của khách
+│   │   │   └── checkout.blade.php   # Thanh toán giỏ hàng
+│   │   ├── orders/                  # Lịch sử đơn hàng của khách hàng
+│   │   │   ├── index.blade.php      # Danh sách đơn hàng của khách
+│   │   │   └── show.blade.php       # Chi tiết đơn hàng
+│   │   └── profile.blade.php        # Trang cá nhân (thông tin người dùng)
+│   ├── auth/                         # Views dành cho trang Đăng nhập/Đăng ký
+│   │   ├── login.blade.php          # Trang Đăng nhập
+│   │   └── register.blade.php       # Trang Đăng ký
+│   ├── components/                   # Các Blade components dùng chung
+│   │   ├── header.blade.php         # Header dùng chung
+│   │   └── footer.blade.php         # Footer dùng chung
+└── lang/                              # Các file ngôn ngữ cho hệ thống
+    └── vi/
+        └── messages.php             # Các thông báo và thông điệp hệ thống
