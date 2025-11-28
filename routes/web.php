@@ -42,6 +42,15 @@ Route::post('/dangxuat', [AuthController::class, 'logout'])->name('logout')->mid
 // ==================== ADMIN ROUTES ====================
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
+
+    // --- QUẢN LÝ SẢN PHẨM ---
+    Route::get('/products', [AdminController::class, 'products'])->name('products'); // Danh sách
+    Route::get('/products/create', [AdminController::class, 'createProduct'])->name('products.create'); // Form thêm
+    Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store'); // Xử lý thêm
+    Route::get('/products/{id}/edit', [AdminController::class, 'editProduct'])->name('products.edit'); // Form sửa
+    Route::put('/products/{id}', [AdminController::class, 'updateProduct'])->name('products.update'); // Xử lý sửa
+    Route::delete('/products/{id}', [AdminController::class, 'deleteProduct'])->name('products.destroy'); // Xóa
+    
     Route::get('/accounts', [AdminController::class, 'accounts'])->name('accounts');
     Route::get('/products', [AdminController::class, 'products'])->name('products');
     Route::get('/categories', [AdminController::class, 'categories'])->name('categories');

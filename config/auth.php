@@ -10,7 +10,7 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
-            'provider' => 'nguoi_dung',    // ← sửa thành nguoi_dung
+            'provider' => 'nguoi_dung',    // thay 'users' thành 'nguoi_dung'
         ],
     ],
 

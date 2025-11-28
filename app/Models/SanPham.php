@@ -26,6 +26,11 @@ class SanPham extends Model
     {
         return $this->hasMany(BienTheSanPham::class, 'san_pham_id');
     }
+    // Quan hệ với Thương Hiệu (Nối bảng)
+    public function thuongHieu()
+    {
+        return $this->belongsTo(ThuongHieu::class, 'thuong_hieu_id');
+    }
 
     // Lấy biến thể đang bán
     public function bienTheDangBan()
