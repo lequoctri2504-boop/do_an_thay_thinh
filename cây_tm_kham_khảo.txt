@@ -1,0 +1,128 @@
+PhoneStore/
+├── app/
+│   ├── Console/
+│   ├── Exceptions/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   ├── ProductController.php
+│   │   │   │   ├── OrderController.php
+│   │   │   │   └── UserController.php
+│   │   │   ├── Employee/
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   ├── OrderController.php
+│   │   │   │   └── InventoryController.php
+│   │   │   ├── Customer/
+│   │   │   │   ├── HomeController.php
+│   │   │   │   ├── ProductController.php
+│   │   │   │   ├── CartController.php
+│   │   │   │   ├── CheckoutController.php
+│   │   │   │   └── ProfileController.php
+│   │   │   ├── Auth/
+│   │   │   │   ├── LoginController.php
+│   │   │   │   ├── RegisterController.php
+│   │   │   │   ├── GoogleController.php
+│   │   │   │   └── FacebookController.php
+│   │   ├── Middleware/
+│   │   │   ├── AdminMiddleware.php
+│   │   │   ├── EmployeeMiddleware.php
+│   │   │   └── CustomerMiddleware.php
+│   │   ├── Kernel.php
+│   │   └── routes.php (optional)
+│   ├── Models/
+│   │   ├── User.php
+│   │   ├── Product.php
+│   │   ├── Order.php
+│   │   ├── OrderDetail.php
+│   │   ├── Category.php
+│   │   ├── Payment.php
+│   │   └── Role.php
+│   ├── Policies/
+│   ├── Providers/
+│   └── Services/
+│       ├── VnpayService.php
+│       └── MomoService.php
+│
+├── bootstrap/
+│   └── app.php
+│
+├── config/
+│   ├── app.php
+│   ├── database.php
+│   ├── services.php (nơi khai báo Google, Facebook, VNPAY, MoMo)
+│   ├── vnpay.php
+│   ├── momo.php
+│   └── auth.php
+│
+├── database/
+│   ├── factories/
+│   ├── migrations/
+│   │   ├── create_users_table.php
+│   │   ├── create_roles_table.php
+│   │   ├── create_products_table.php
+│   │   ├── create_orders_table.php
+│   │   ├── create_order_details_table.php
+│   │   └── create_payments_table.php
+│   ├── seeders/
+│   │   ├── UserSeeder.php
+│   │   ├── ProductSeeder.php
+│   │   ├── CategorySeeder.php
+│   │   └── DatabaseSeeder.php
+│
+├── public/
+│   ├── assets/
+│   │   ├── css/
+│   │   ├── js/
+│   │   ├── images/
+│   │   └── uploads/
+│   ├── index.php
+│
+├── resources/
+│   ├── views/
+│   │   ├── layouts/
+│   │   │   ├── admin.blade.php
+│   │   │   ├── employee.blade.php
+│   │   │   └── customer.blade.php
+│   │   ├── admin/
+│   │   │   ├── dashboard.blade.php
+│   │   │   ├── products/
+│   │   │   ├── orders/
+│   │   │   └── users/
+│   │   ├── employee/
+│   │   │   ├── dashboard.blade.php
+│   │   │   └── inventory/
+│   │   ├── customer/
+│   │   │   ├── home.blade.php
+│   │   │   ├── products.blade.php
+│   │   │   ├── cart.blade.php
+│   │   │   ├── checkout.blade.php
+│   │   │   └── profile.blade.php
+│   │   └── auth/
+│   │       ├── login.blade.php
+│   │       └── register.blade.php
+│   ├── css/
+│   ├── js/
+│   └── lang/
+│       └── vi/
+│           └── messages.php
+│
+├── routes/
+│   ├── web.php        ← định nghĩa route chính
+│   ├── api.php
+│   ├── admin.php
+│   ├── employee.php
+│   ├── customer.php
+│
+├── storage/
+│   ├── app/
+│   ├── framework/
+│   └── logs/
+│
+├── tests/
+│   └── Feature/
+│
+├── .env
+├── artisan
+├── composer.json
+└── package.json

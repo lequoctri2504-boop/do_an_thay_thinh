@@ -1,0 +1,6 @@
+composer create-project laravel/laravel ten
+
+php artisan serve
+
+tạo controller :
+ php artisan make:controller tên:Admincontroler
