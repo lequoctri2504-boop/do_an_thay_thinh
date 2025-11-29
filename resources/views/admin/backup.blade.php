@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+<!-- @extends('layouts.admin')
 
 @section('title', 'Sao lưu & Khôi phục')
 
@@ -20,4 +20,4 @@
         <p class="text-center" style="padding: 20px;">Chưa có bản sao lưu nào</p>
     </div>
 </section>
-@endsection
+@endsection -->

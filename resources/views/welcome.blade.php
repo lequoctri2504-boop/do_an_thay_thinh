@@ -116,7 +116,7 @@
                         $giaSoSanh = $bienThe->gia_so_sanh ?? null;
                     @endphp
                     <div class="product-card">
-                        @if($giaSoSanh)
+                        @if($giaSoSanh >0)
                             @php
                                 $phanTram = round((($giaSoSanh - $bienThe->gia) / $giaSoSanh) * 100);
                             @endphp

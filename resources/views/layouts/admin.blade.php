@@ -29,24 +29,23 @@
                     <span class="badge">2</span>
                 </button>
             </div>
-            <div class="user-dropdown">
-                <button class="user-btn">
-                    <i class="fas fa-user-shield"></i>
-                    <span>{{ $u->ho_ten ?? 'Admin' }}</span>
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-                <div class="dropdown-menu">
-                    <a href="#"><i class="fas fa-user"></i> Thông tin cá nhân</a>
-                    <a href="{{ route('admin.settings') }}"><i class="fas fa-cog"></i> Cài đặt hệ thống</a>
-                    <form action="{{ route('logout') }}" method="post" style="margin:0;">
-                        @csrf
-                        <button type="submit" class="dropdown-item"
-                                style="width:100%;text-align:left;border:none;background:none;cursor:pointer;">
-                            <i class="fas fa-sign-out-alt"></i> Đăng xuất
-                        </button>
-                    </form>
+                <div class="user-dropdown">
+                    <button class="user-btn">
+                        <i class="fas fa-user-shield"></i>
+                        <span>{{ $u->ho_ten ?? 'Admin' }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="{{ route('admin.profile') }}"><i class="fas fa-user"></i> Thông tin cá nhân</a>
+                        <!-- <a href="{{ route('admin.settings') }}"><i class="fas fa-cog"></i> Cài đặt hệ thống</a> -->
+                        <form action="{{ route('logout') }}" method="post" >
+                            @csrf
+                            <button type="submit" class="dropdown-item">
+                                <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                            </button>
+                        </form>
+                    </div>
                 </div>
-            </div>
         </div>
     </header>
 
@@ -74,8 +73,15 @@
                 <a href="{{ route('admin.categories') }}"
                    class="nav-item {{ request()->routeIs('admin.categories') ? 'active' : '' }}">
                     <i class="fas fa-tags"></i>
-                    <span>Danh mục & Thương hiệu</span>
+                    <span>Danh mục </span>
                 </a>
+
+                <a href="{{ route('admin.brands') }}"
+                   class="nav-item {{ request()->routeIs('admin.brands') ? 'active' : '' }}">
+                    <i class="fas fa-star"></i>
+                    <span> Thương hiệu</span>
+                </a>
+
                 <a href="{{ route('admin.orders') }}"
                    class="nav-item {{ request()->routeIs('admin.orders') ? 'active' : '' }}">
                     <i class="fas fa-shopping-bag"></i>
@@ -86,11 +92,11 @@
                     <i class="fas fa-gift"></i>
                     <span>Khuyến mãi</span>
                 </a>
-                <a href="{{ route('admin.reviews') }}"
+                <!-- <a href="{{ route('admin.reviews') }}"
                    class="nav-item {{ request()->routeIs('admin.reviews') ? 'active' : '' }}">
                     <i class="fas fa-star"></i>
                     <span>Đánh giá</span>
-                </a>
+                </a> -->
 
                 <div class="nav-divider">BÁO CÁO</div>
                 <a href="{{ route('admin.reports') }}"
@@ -99,7 +105,7 @@
                     <span>Báo cáo tổng hợp</span>
                 </a>
 
-                <div class="nav-divider">HỆ THỐNG</div>
+                <!-- <div class="nav-divider">HỆ THỐNG</div>
                 <a href="{{ route('admin.backup') }}"
                    class="nav-item {{ request()->routeIs('admin.backup') ? 'active' : '' }}">
                     <i class="fas fa-database"></i>
@@ -109,7 +115,7 @@
                    class="nav-item {{ request()->routeIs('admin.settings') ? 'active' : '' }}">
                     <i class="fas fa-cog"></i>
                     <span>Cài đặt</span>
-                </a>
+                </a> -->
             </nav>
         </aside>
 

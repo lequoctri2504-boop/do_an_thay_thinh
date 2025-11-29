@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+<!-- @extends('layouts.admin')
 
 @section('title', 'Báo cáo tổng hợp')
 
@@ -50,4 +50,4 @@
         </div>
     </div>
 </section>
-@endsection
+@endsection -->

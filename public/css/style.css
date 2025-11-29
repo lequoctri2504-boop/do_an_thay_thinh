@@ -2149,8 +2149,15 @@ textarea.form-control {
     z-index: 1000;
 }
 
-.user-dropdown:hover .dropdown-menu {
+/* .user-dropdown:hover .dropdown-menu {
     display: block;
+} */
+.user-dropdown .dropdown-menu.show {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    top: 100%;
+    transform: translateY(0);
 }
 
 .dropdown-menu a {

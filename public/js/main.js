@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Dashboard navigation
     //initDashboardNav();
+    initSidebarMenu();
+    initUserDropdown();
     
     // Add to cart buttons
     initAddToCartButtons();
@@ -202,6 +204,62 @@ function initDashboardNav() {
         });
     });
 }
+
+function initSidebarMenu() {
+    // Lấy tất cả các thẻ a có thuộc tính data-bs-toggle="collapse"
+    // Đây là chuẩn của template admin bạn đang dùng
+    const triggers = document.querySelectorAll('.nav-link[data-bs-toggle="collapse"]');
+
+    triggers.forEach(trigger => {
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault(); // Ngăn việc load lại trang hoặc nhảy trang
+
+            // Lấy ID của menu con cần xổ ra (từ href hoặc data-bs-target)
+            const targetId = this.getAttribute('href') || this.getAttribute('data-bs-target');
+            
+            // Tìm menu con đó
+            const targetMenu = document.querySelector(targetId);
+
+            if (targetMenu) {
+                // Kiểm tra xem nó đang hiện hay ẩn để toggle
+                if (targetMenu.classList.contains('show')) {
+                    // Nếu đang hiện -> Ẩn đi
+                    targetMenu.classList.remove('show');
+                    this.classList.add('collapsed'); // Class để xoay mũi tên (nếu có)
+                    this.setAttribute('aria-expanded', 'false');
+                } else {
+                    // Nếu đang ẩn -> Hiện ra
+                    targetMenu.classList.add('show');
+                    this.classList.remove('collapsed'); // Class để xoay mũi tên
+                    this.setAttribute('aria-expanded', 'true');
+                }
+            }
+        });
+    });
+}
+
+// ==================== USER DROPDOWN ====================
+function initUserDropdown() {
+    const userBtn = document.querySelector('.user-btn');
+    const userMenu = document.querySelector('.user-dropdown .dropdown-menu');
+
+    if (userBtn && userMenu) {
+        // Xử lý khi click vào nút
+        userBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Ngăn không cho sự kiện click lan ra ngoài ngay lập tức
+            userMenu.classList.toggle('show'); // Thêm/bỏ class 'show' để hiện/ẩn menu
+        });
+
+        // Xử lý khi click ra ngoài thì đóng menu
+        document.addEventListener('click', function(e) {
+            // Nếu click không trúng nút User VÀ không trúng menu -> thì đóng lại
+            if (!userBtn.contains(e.target) && !userMenu.contains(e.target)) {
+                userMenu.classList.remove('show');
+            }
+        });
+    }
+}
+
 
 // ==================== THUMBNAIL GALLERY ====================
 function initThumbnailGallery() {
