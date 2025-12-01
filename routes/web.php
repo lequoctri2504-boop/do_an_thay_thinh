@@ -2,10 +2,15 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
+
+
 
 // ==================== PUBLIC ROUTES ====================
 // Route::get('/', function () {
@@ -108,4 +113,67 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     Route::get('/orders', [CustomerController::class, 'orders'])->name('orders');
     Route::get('/wishlist', [CustomerController::class, 'wishlist'])->name('wishlist');
     Route::get('/reviews', [CustomerController::class, 'reviews'])->name('reviews');
+});
+
+
+// === PUBLIC ROUTES (Khách hàng) ===
+// 1. Chi tiết sản phẩm & Tìm kiếm
+// Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('product.detail');
+// Route::get('/tim-kiem', [ProductController::class, 'search'])->name('search');
+
+// // 2. Giỏ hàng
+// Route::get('/gio-hang', [CartController::class, 'index'])->name('cart.index');
+// Route::post('/gio-hang/them', [CartController::class, 'add'])->name('cart.add');
+// Route::get('/gio-hang/xoa/{id}', [CartController::class, 'remove'])->name('cart.remove');
+
+// // 3. Thanh toán (Ví dụ bạn yêu cầu)
+// Route::get('/thanh-toan', [CheckoutController::class, 'index'])->name('checkout');
+// Route::post('/thanh-toan', [CheckoutController::class, 'process'])->name('checkout.process');
+// Route::get('/thanh-toan/vnpay-return', [CheckoutController::class, 'vnpayReturn'])->name('vnpay.return');
+
+
+// Trang chủ
+Route::get('/', [HomeController::class, 'index'])->name('home');
+// Tìm kiếm sản phẩm
+Route::get('/tim-kiem', [HomeController::class, 'search'])->name('search');
+
+// Chi tiết sản phẩm
+Route::get('/san-pham/{slug}', [HomeController::class, 'chiTiet'])->name('chi-tiet');
+
+// Lọc theo thương hiệu
+Route::get('/thuong-hieu/{slug}', [HomeController::class, 'thuongHieu'])->name('thuong-hieu');
+
+// Lọc theo danh mục
+Route::get('/danh-muc/{slug}', [HomeController::class, 'danhMuc'])->name('danh-muc');
+
+// API cho trang chủ
+Route::post('/binh-luan', [HomeController::class, 'themBinhLuan'])->name('binh-luan.them');
+Route::post('/danh-gia', [HomeController::class, 'themDanhGia'])->name('danh-gia.them');
+
+// Route cho giỏ hàng (cần tạo CartController riêng)
+Route::middleware('auth')->group(function () {
+    Route::post('/gio-hang/them', [CartController::class, 'add'])->name('cart.add');
+    // Route::post('/yeu-thich/toggle', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
+});
+
+// Newsletter
+// Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+
+// Quick view
+Route::get('/san-pham/quick-view/{id}', [HomeController::class, 'quickView'])->name('product.quickview');
+
+// 1. Xem chi tiết sản phẩm
+Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('product.detail');
+
+// 2. Giỏ hàng
+Route::get('/gio-hang', [CartController::class, 'index'])->name('cart.index');
+Route::post('/gio-hang/them/{id}', [CartController::class, 'addToCart'])->name('cart.add');
+Route::patch('/gio-hang/cap-nhat', [CartController::class, 'update'])->name('cart.update');
+Route::delete('/gio-hang/xoa', [CartController::class, 'remove'])->name('cart.remove');
+
+// 3. Thanh toán (Yêu cầu đăng nhập)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/thanh-toan', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/thanh-toan', [CheckoutController::class, 'process'])->name('checkout.process');
+    Route::get('/thanh-toan/thanh-cong', [CheckoutController::class, 'success'])->name('checkout.success');
 });

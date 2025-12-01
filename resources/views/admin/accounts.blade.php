@@ -16,6 +16,7 @@
             <i class="fas fa-check-circle"></i> {{ session('success') }}
         </div>
     @endif
+    
     @if(session('error'))
         <div class="alert alert-danger" style="padding: 10px; background: #f8d7da; color: #721c24; margin-bottom: 20px;">
             <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
@@ -33,6 +34,7 @@
                     <a href="{{ route('admin.accounts') }}" class="btn btn-secondary">Hủy lọc</a>
                 @endif
             </form>
+            
         </div>
 
         <div class="table-responsive">
