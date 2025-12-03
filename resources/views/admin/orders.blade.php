@@ -26,11 +26,51 @@
                     </tr>
                 </thead>
                 <tbody>
+                @forelse($orders as $order)
+                    @php
+                        // Chuyển trạng thái sang lowercase để mapping CSS
+                        $status = strtolower($order->trang_thai);
+                        if ($status == 'dang_xu_ly') $statusClass = 'processing';
+                        elseif ($status == 'dang_giao') $statusClass = 'shipping';
+                        elseif ($status == 'hoan_thanh') $statusClass = 'delivered';
+                        else $statusClass = 'cancelled';
+                        
+                        // Lấy tên khách hàng nếu có, hoặc Khách lẻ
+                        $customerName = $order->nguoiDung->ho_ten ?? $order->ten_nguoi_nhan ?? 'Khách lẻ';
+                    @endphp
                     <tr>
-                        <td colspan="6" class="text-center">Chưa có đơn hàng</td>
+                        <td><strong>#{{ $order->ma }}</strong></td>
+                        <td>{{ $customerName }}</td>
+                        <td>{{ \Carbon\Carbon::parse($order->ngay_dat)->format('d/m/Y H:i') }}</td>
+                        <td><strong>{{ number_format($order->thanh_tien, 0, ',', '.') }}₫</strong></td>
+                        <td>
+                            <span class="status-badge status-{{ $statusClass }}">
+                                {{ $order->trang_thai }}
+                            </span>
+                            <br>
+                            <small class="text-muted">TT: {{ $order->trang_thai_tt }}</small>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-secondary" title="Chi tiết">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            @if($order->trang_thai == 'DANG_XU_LY')
+                                <button class="btn btn-sm btn-primary" title="Xử lý">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            @endif
+                        </td>
                     </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="text-center">Chưa có đơn hàng nào.</td>
+                    </tr>
+                @endforelse
                 </tbody>
             </table>
+        </div>
+        <div class="pagination-wrapper">
+            {{ $orders->links() }}
         </div>
     </div>
 </section>

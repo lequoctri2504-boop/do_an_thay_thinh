@@ -7,31 +7,23 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DanhMuc extends Model
 {
-    use SoftDeletes; // Sử dụng xóa mềm
-
+    use SoftDeletes;
     protected $table = 'danh_muc';
-
-    protected $fillable = [
-        'ten',
-        'slug',
-        'cha_id', // ID danh mục cha (nếu có)
-    ];
-
-    // Quan hệ: Danh mục cha
-    public function danhMucCha()
+    
+    protected $fillable = ['ten', 'slug', 'cha_id'];
+    
+    public function sanPham()
+    {
+        return $this->belongsToMany(SanPham::class, 'san_pham_danh_muc', 'danh_muc_id', 'san_pham_id');
+    }
+    
+    public function parent()
     {
         return $this->belongsTo(DanhMuc::class, 'cha_id');
     }
-
-    // Quan hệ: Danh mục con
-    public function danhMucCon()
+    
+    public function children()
     {
         return $this->hasMany(DanhMuc::class, 'cha_id');
-    }
-
-    // Quan hệ: Sản phẩm thuộc danh mục
-    public function sanPhams()
-    {
-        return $this->belongsToMany(SanPham::class, 'san_pham_danh_muc', 'danh_muc_id', 'san_pham_id');
     }
 }

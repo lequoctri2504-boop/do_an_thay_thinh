@@ -2,27 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use Notifiable;
 
-    // Bắt buộc phải khai báo bảng là nguoi_dung
-    protected $table = 'nguoi_dung';
-
+    protected $table = 'nguoi_dung';  // ← Trỏ đến bảng nguoi_dung
+    
     protected $fillable = [
-        'ho_ten',
+        'ten',
         'email',
         'mat_khau',
         'sdt',
+        'dia_chi',
         'vai_tro',
-        'bi_chan',
-        'google_id',       // thêm để lưu ID Google
-        'facebook_id',     // thêm để lưu ID Facebook (dùng sau)
+        'trang_thai',
+        'google_id',
+        'facebook_id'
     ];
 
     protected $hidden = [
@@ -30,16 +28,30 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $casts = [
-        'bi_chan' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
-    ];
-
-    // RẤT QUAN TRỌNG: Laravel tìm cột "password" → phải override lại lấy "mat_khau"
+    // Sử dụng cột mat_khau thay vì password
     public function getAuthPassword()
     {
         return $this->mat_khau;
+    }
+
+    // Relationships
+    public function gioHang()
+    {
+        return $this->hasOne(GioHang::class, 'nguoi_dung_id');
+    }
+
+    public function donHang()
+    {
+        return $this->hasMany(DonHang::class, 'nguoi_dung_id');
+    }
+
+    public function danhGia()
+    {
+        return $this->hasMany(DanhGia::class, 'nguoi_dung_id');
+    }
+
+    public function binhLuan()
+    {
+        return $this->hasMany(BinhLuan::class, 'nguoi_dung_id');
     }
 }

@@ -35,10 +35,10 @@
                 <tbody>
                 @forelse($products as $sp)
                     @php
-                        // Lấy giá min/max từ relation đã eager load
-                        $minPrice = $sp->bienThe->min('gia');
-                        $maxPrice = $sp->bienThe->max('gia');
-                        $stock = $sp->bienThe->sum('ton_kho');
+                        // FIX LỖI: Dùng bienTheSanPham thay vì bienThe
+                        $minPrice = $sp->bienTheSanPham->min('gia');
+                        $maxPrice = $sp->bienTheSanPham->max('gia');
+                        $stock = $sp->bienTheSanPham->sum('ton_kho');
                     @endphp
                     <tr>
                         <td>
@@ -51,7 +51,8 @@
                         </td>
                         <td>
                             <strong>{{ $sp->ten }}</strong><br>
-                            <small style="color: #666;">SKU: {{ $sp->bienThe->first()->sku ?? 'N/A' }}</small>
+                            {{-- FIX LỖI: Dùng bienTheSanPham thay vì bienThe --}}
+                            <small style="color: #666;">SKU: {{ $sp->bienTheSanPham->first()->sku ?? 'N/A' }}</small>
                         </td>
                         <td>
                             @if($minPrice)

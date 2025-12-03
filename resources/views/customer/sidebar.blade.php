@@ -1,35 +1,36 @@
 <div class="account-sidebar">
+    {{-- Hiển thị thông tin người dùng --}}
     <div class="user-info">
-        <div class="user-avatar">
-            <i class="fas fa-user-circle"></i>
-        </div>
-        <h3>{{ Auth::user()->ho_ten }}</h3>
-        <p>{{ Auth::user()->email }}</p>
+        <i class="fas fa-user-circle"></i>
+        {{-- $user có sẵn từ CustomerController --}}
+        <h4>Xin chào, {{ Auth::user()->ho_ten ?? 'Khách hàng' }}</h4>
+        <p>Email: {{ Auth::user()->email ?? 'N/A' }}</p>
     </div>
-
-    <div class="account-menu">
-        <a href="{{ route('customer.profile') }}" class="menu-item {{ request()->routeIs('customer.profile') ? 'active' : '' }}">
-            <i class="fas fa-user"></i>
-            <span>Thông tin cá nhân</span>
-        </a>
-        <a href="{{ route('customer.orders') }}" class="menu-item {{ request()->routeIs('customer.orders') ? 'active' : '' }}">
-            <i class="fas fa-shopping-bag"></i>
-            <span>Đơn hàng của tôi</span>
-        </a>
-        <a href="{{ route('customer.wishlist') }}" class="menu-item {{ request()->routeIs('customer.wishlist') ? 'active' : '' }}">
-            <i class="fas fa-heart"></i>
-            <span>Yêu thích</span>
-        </a>
-        <a href="{{ route('customer.reviews') }}" class="menu-item {{ request()->routeIs('customer.reviews') ? 'active' : '' }}">
-            <i class="fas fa-star"></i>
-            <span>Đánh giá</span>
-        </a>
-        <form action="{{ route('logout') }}" method="post">
-            @csrf
-            <button type="submit" class="menu-item" style="width:100%; border:none; background:none; text-align:left; cursor:pointer;">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Đăng xuất</span>
-            </button>
-        </form>
-    </div>
+    
+    <ul class="sidebar-menu">
+        {{-- Route::is() dùng để kiểm tra route hiện tại và thêm class 'active' --}}
+        <li class="{{ Route::is('customer.profile') ? 'active' : '' }}">
+            <a href="{{ route('customer.profile') }}"><i class="fas fa-user"></i> Thông tin tài khoản</a>
+        </li>
+        <li class="{{ Route::is('customer.orders') ? 'active' : '' }}">
+            <a href="{{ route('customer.orders') }}"><i class="fas fa-receipt"></i> Đơn hàng của tôi</a>
+        </li>
+        {{-- Giả định có route cho Wishlist --}}
+        <li class="{{ Route::is('customer.wishlist') ? 'active' : '' }}">
+            <a href="{{ route('customer.wishlist') }}"><i class="far fa-heart"></i> Sản phẩm yêu thích</a>
+        </li>
+        {{-- Giả định có route cho Đánh giá --}}
+        <li>
+            <a href="#"><i class="fas fa-star"></i> Đánh giá của tôi</a>
+        </li>
+        <li>
+            {{-- Form Đăng xuất --}}
+            <form action="{{ route('logout') }}" method="POST" style="display: block;">
+                @csrf
+                <button type="submit" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </button>
+            </form>
+        </li>
+    </ul>
 </div>

@@ -1675,7 +1675,7 @@ textarea.form-control {
 }
 
 /* ==================== ACCOUNT PAGE ==================== */
-.account-page {
+/* .account-page {
     padding: 30px 0;
 }
 
@@ -1772,6 +1772,213 @@ textarea.form-control {
 
 .mt-4 {
     margin-top: 30px;
+} */
+/* ================================== */
+/* ACCOUNT PAGE STYLES */
+/* ================================== */
+
+.account-page {
+    padding: 30px 0;
+    background-color: #f4f4f4; /* Nền nhẹ */
+}
+
+.account-layout {
+    display: flex;
+    gap: 25px; /* Khoảng cách giữa sidebar và nội dung */
+    align-items: flex-start; /* Giữ các mục ở trên cùng */
+}
+
+/* Sidebar */
+.account-sidebar {
+    flex-basis: 280px; /* Độ rộng cố định cho sidebar */
+    min-width: 250px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 20px;
+}
+
+.account-sidebar .user-info {
+    text-align: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 15px;
+}
+
+.account-sidebar .user-info i {
+    font-size: 40px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.account-sidebar .user-info h4 {
+    margin: 5px 0 3px;
+    font-size: 1.1em;
+    color: var(--text-dark);
+}
+
+.account-sidebar .user-info p {
+    font-size: 0.9em;
+    color: var(--text-muted);
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li a,
+.sidebar-menu li button {
+    display: block;
+    padding: 10px 10px;
+    margin-bottom: 5px;
+    color: var(--text-dark);
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+    font-size: 1em;
+}
+
+.sidebar-menu li a i,
+.sidebar-menu li button i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-menu li:hover a,
+.sidebar-menu li:hover button,
+.sidebar-menu li.active a {
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+.sidebar-menu li button.logout-btn {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-dark); /* Màu chữ mặc định */
+}
+
+.sidebar-menu li:hover button.logout-btn {
+    background-color: var(--danger-color); 
+    color: var(--white);
+}
+
+
+/* Content Area */
+.account-content {
+    flex-grow: 1;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 30px;
+}
+
+.account-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.account-header-info h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+}
+.account-header-info h2 i {
+    margin-right: 10px;
+}
+
+
+.account-status {
+    font-size: 0.9em;
+    color: var(--text-muted);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85em;
+    margin-left: 5px;
+}
+/* Các màu cho badge trạng thái */
+.status-khach-hang {
+    background-color: #e0f7fa;
+    color: #00bcd4;
+}
+.status-quan-tri-vien-admin {
+    background-color: #ffecb3;
+    color: #ff9800;
+}
+.status-nhan-vien-staff {
+    background-color: #c8e6c9;
+    color: #4caf50;
+}
+
+/* Form Styles */
+.profile-form .form-section-title {
+    font-size: 1.3em;
+    color: var(--text-dark);
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.profile-form .form-group {
+    margin-bottom: 15px;
+}
+
+.profile-form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--text-dark);
+}
+
+.profile-form .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+    box-sizing: border-box;
+}
+
+.profile-form .required {
+    color: var(--danger-color);
+}
+
+.profile-form .form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.profile-form .form-row .form-group {
+    flex: 1;
+}
+
+.profile-form .form-divider {
+    border: 0;
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 25px 0;
+}
+
+.profile-form .btn-large {
+    padding: 12px 25px;
+    font-size: 1.1em;
 }
 
 /* Order Tabs */

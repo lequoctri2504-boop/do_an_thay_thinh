@@ -1,299 +1,422 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhoneShop - Điện thoại chính hãng giá rẻ</title>
-    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-top">
-            <div class="container">
-                <div class="header-top-content">
-                    <div class="header-left">
-                        <a href="#"><i class="fas fa-phone"></i> hotline: 0962371176</a>
-                        <a href="#"><i class="fas fa-map-marker-alt"></i> Tìm cửa hàng</a>
-                    </div>
-                    <div class="header-right">
-                        @guest
-                            <a href="{{ route('login') }}"><i class="fas fa-user"></i> Đăng nhập</a>
-                            <a href="{{ route('register') }}"><i class="fas fa-user-plus"></i> Đăng ký</a>
-                        @else
-                            <a href="#"><i class="fas fa-user"></i> {{ Auth::user()->ho_ten }}</a>
-                            @if(Auth::user()->vai_tro === 'ADMIN')
-                                <a href="{{ route('admin.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Quản trị</a>
-                            @elseif(Auth::user()->vai_tro === 'NHAN_VIEN')
-                                <a href="{{ route('staff.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Nhân viên</a>
-                            @endif
-                            <form action="{{ route('logout') }}" method="post" style="display:inline;">
-                                @csrf
-                                <button type="submit" style="background:none;border:none;color:#fff;cursor:pointer;">
-                                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
-                                </button>
-                            </form>
-                        @endguest
-                        <a href="#"><i class="fas fa-receipt"></i> Tra cứu đơn hàng</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="header-main">
-            <div class="container">
-                <div class="header-main-content">
-                    <div class="logo">
-                        <a href="{{ route('home') }}">
-                            <span><img src="{{ asset('img/logo_LQT1.png') }}" alt="" width="70px"></span>
-                        </a>
-                    </div>
-                    
-                    <div class="search-box">
-                        <input type="text" placeholder="Tìm kiếm điện thoại, phụ kiện...">
-                        <button><i class="fas fa-search"></i></button>
-                    </div>
-                    
-                    <div class="header-actions">
-                        <a href="#" class="wishlist-btn">
-                            <i class="far fa-heart"></i>
-                            <span class="badge">0</span>
-                        </a>
-                        <a href="#" class="cart-btn">
-                            <i class="fas fa-shopping-cart"></i>
-                            <span class="badge">0</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <nav class="navbar">
-            <div class="container">
-                <ul class="nav-menu">
-                    <li><a href="#"><i class="fas fa-mobile-alt"></i> Điện thoại</a></li>                
-                    <li><a href="#"><i class="fas fa-headphones"></i> Phụ kiện</a></li>
-                    <li><a href="#"><i class="fas fa-empire"></i> Thu cũ đổi mới</a></li>
-                    <li><a href="#"><i class="fa fa-gamepad" aria-hidden="true"></i> chơi tạo voucher</a></li>
-                    <li class="hot"><a href="#"><i class="fas fa-fire"></i> Khuyến mãi</a></li>
-                </ul>
-            </div>
-        </nav>
-    </header>
+@extends('layouts.app')
 
-    <!-- Banner Slider -->
-    <section class="banner-slider">
-        <div class="container">
-            <div class="slider-wrapper">
-                <div class="slide active">
-                    <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&h=400&fit=crop" alt="Banner 1">
+@section('title', 'PhoneShop - Điện thoại chính hãng giá rẻ')
+
+@section('content')
+<section class="banner-slider">
+    <div class="container">
+        {{-- SỬ DỤNG STYLE INLINE TRÊN SLIDER-WRAPPER ĐỂ CÓ CHIỀU CAO CỐ ĐỊNH --}}
+        <div class="slider-wrapper" style="position: relative; height: 450px; overflow: hidden;">
+            
+            {{-- NÚT ĐIỀU HƯỚNG --}}
+            <button class="slider-arrow arrow-left"><i class="fas fa-chevron-left"></i></button>
+            <button class="slider-arrow arrow-right"><i class="fas fa-chevron-right"></i></button>
+
+            @foreach($banners as $index => $banner)
+                <div class="slide {{ $index === 0 ? 'active' : '' }}">
+                    <img src="{{ $banner['image'] }}" alt="Banner {{ $index + 1 }}">
                     <div class="slide-content">
-                        <h2>iPhone 17 Pro Max</h2>
-                        <p>Titanium. Mạnh mẽ. Nhẹ hơn bao giờ hết</p>
-                        <a href="#" class="btn btn-primary">Xem ngay</a>
+                        <h2>{{ $banner['title'] }}</h2>
+                        <p>{{ $banner['subtitle'] }}</p>
+                        <a href="{{ $banner['link'] }}" class="btn btn-primary">Xem ngay</a>
                     </div>
                 </div>
-            </div>
+            @endforeach
         </div>
-    </section>
-
-    <!-- Flash Sale -->
-    <section class="flash-sale">
-        <div class="container">
-            <div class="section-header">
-                <h2><i class="fas fa-bolt"></i> SẢN PHẨM NỔI BẬT</h2>
-                <div class="countdown">
-                    <span>02</span>:<span>35</span>:<span>48</span>
-                </div>
-            </div>
-            <div class="product-grid">
-                @forelse($featuredProducts as $product)
-                    @php
-                        $bienThe = $product->bienTheDangBan->first();
-                        $giaThapNhat = $product->bienTheDangBan->min('gia');
-                        $giaCaoNhat = $product->bienTheDangBan->max('gia');
-                        $giaSoSanh = $bienThe->gia_so_sanh ?? null;
-                    @endphp
-                    <div class="product-card">
-                        @if($giaSoSanh >0)
-                            @php
-                                $phanTram = round((($giaSoSanh - $bienThe->gia) / $giaSoSanh) * 100);
-                            @endphp
-                            <div class="product-badge">-{{ $phanTram }}%</div>
-                        @endif
-                        <div class="product-image">
-                            <img src="{{ asset('img/' . ($product->hinh_anh_mac_dinh ?? 'default.png')) }}" 
-                                 alt="{{ $product->ten }}"
-                                 onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'">
-                            <button class="quick-view"><i class="fas fa-eye"></i></button>
-                        </div>
-                        <div class="product-info">
-                            <h3>{{ $product->ten }}</h3>
-                            <div class="product-rating">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star-half-alt"></i>
-                                <span>(234)</span>
-                            </div>
-                            <div class="product-price">
-                                @if($giaThapNhat == $giaCaoNhat)
-                                    <span class="price-new">{{ number_format($giaThapNhat, 0, ',', '.') }}₫</span>
-                                @else
-                                    <span class="price-new">
-                                        {{ number_format($giaThapNhat, 0, ',', '.') }}₫ - 
-                                        {{ number_format($giaCaoNhat, 0, ',', '.') }}₫
-                                    </span>
-                                @endif
-                                @if($giaSoSanh)
-                                    <span class="price-old">{{ number_format($giaSoSanh, 0, ',', '.') }}₫</span>
-                                @endif
-                            </div>
-                            <button class="btn btn-cart"><i class="fas fa-shopping-cart"></i> Thêm vào giỏ</button>
-                        </div>
-                    </div>
-                @empty
-                    <p>Chưa có sản phẩm nào</p>
-                @endforelse
-            </div>
-        </div>
-    </section>
-
-    <!-- Hot Brands -->
-    <section class="hot-brands">
-        <div class="container">
-            <div class="section-header">
-                <h2><i class="fas fa-fire"></i> THƯƠNG HIỆU NỔI BẬT</h2>
-            </div>
-            <div class="brands-grid">
-                <a href="#" class="brand-card">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple">
-                    <span>Apple</span>
-                </a>
-                <a href="#" class="brand-card">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg" alt="Samsung">
-                    <span>Samsung</span>
-                </a>
-                <a href="#" class="brand-card">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Xiaomi_logo_%282021-%29.svg" alt="Xiaomi">
-                    <span>Xiaomi</span>
-                </a>
-                <a href="#" class="brand-card">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/OPPO_LOGO_2019.svg" alt="OPPO">
-                    <span>OPPO</span>
-                </a>
-                <a href="#" class="brand-card">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Vivo_logo_2019.svg" alt="Vivo">
-                    <span>Vivo</span>
-                </a>
-                <a href="#" class="brand-card">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Realme_logo.svg" alt="Realme">
-                    <span>Realme</span>
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Featured Products -->
-    <section class="featured-products">
-        <div class="container">
-            <div class="section-header">
-                <h2><i class="fas fa-crown"></i> SẢN PHẨM MỚI NHẤT</h2>
-                <a href="#" class="view-all">Xem tất cả <i class="fas fa-arrow-right"></i></a>
-            </div>
-            <div class="product-grid">
-                @foreach($newProducts as $product)
-                    @php
-                        $bienThe = $product->bienTheDangBan->first();
-                        $giaThapNhat = $product->bienTheDangBan->min('gia');
-                    @endphp
-                    <div class="product-card">
-                        <div class="product-badge new">MỚI</div>
-                        <div class="product-image">
-                            <img src="{{ asset('img/' . ($product->hinh_anh_mac_dinh ?? 'default.png')) }}" 
-                                 alt="{{ $product->ten }}"
-                                 onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'">
-                            <button class="quick-view"><i class="fas fa-eye"></i></button>
-                        </div>
-                        <div class="product-info">
-                            <h3>{{ $product->ten }}</h3>
-                            <div class="product-rating">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <span>(567)</span>
-                            </div>
-                            <div class="product-price">
-                                <span class="price-new">{{ number_format($giaThapNhat, 0, ',', '.') }}₫</span>
-                            </div>
-                            <button class="btn btn-cart"><i class="fas fa-shopping-cart"></i> Thêm vào giỏ</button>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-top">
-                <div class="footer-col">
-                    <h4>Về PhoneShop</h4>
-                    <ul>
-                        <li><a href="#">Giới thiệu công ty</a></li>
-                        <li><a href="#">Tuyển dụng</a></li>
-                        <li><a href="#">Tin tức</a></li>
-                        <li><a href="#">Liên hệ</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Chính sách</h4>
-                    <ul>
-                        <li><a href="#">Chính sách bảo hành</a></li>
-                        <li><a href="#">Chính sách đổi trả</a></li>
-                        <li><a href="#">Chính sách vận chuyển</a></li>
-                        <li><a href="#">Chính sách bảo mật</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Hỗ trợ khách hàng</h4>
-                    <ul>
-                        <li><a href="#">Hướng dẫn mua hàng</a></li>
-                        <li><a href="#">Hướng dẫn thanh toán</a></li>
-                        <li><a href="#">Tra cứu đơn hàng</a></li>
-                        <li><a href="#">Câu hỏi thường gặp</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Kết nối với chúng tôi</h4>
-                    <div class="social-links">
-                        <a href="https://www.facebook.com/quoctri.le.319"><i class="fab fa-facebook"></i></a>
-                        <a href="#"><i class="fab fa-youtube"></i></a>
-                        <a href="https://www.tiktok.com/@lqt254"><i class="fab fa-tiktok"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; Designer by lê quốc trí D22_TH14. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Chat Widget -->
-    <div class="chat-widget">
-        <button class="chat-toggle">
-            <i class="fas fa-comments"></i>
-        </button>
     </div>
+</section>
 
-    <!-- Toast Notification -->
-    <div class="toast" id="toast"></div>
+<section class="flash-sale">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-bolt"></i> FLASH SALE - KẾT THÚC TRONG</h2>
+            <div class="countdown">
+                <span id="hours">02</span>:<span id="minutes">35</span>:<span id="seconds">48</span>
+            </div>
+        </div>
+        <div class="product-grid">
+            @forelse($flashSaleProducts as $product)
+                @php
+                    $variant = $product->bienTheSanPham->first();
+                    $minPrice = $variant ? $variant->gia : 0;
+                    $comparePrice = $variant ? $variant->gia_so_sanh : 0;
+                    $discount = $comparePrice > $minPrice ? round((($comparePrice - $minPrice) / $comparePrice) * 100) : 0;
+                    $imagePath = $product->hinh_anh_mac_dinh ? asset('uploads/' . $product->hinh_anh_mac_dinh) : 'https://via.placeholder.com/300';
+                    $avgRating = $product->danhGia->avg('so_sao') ?? 0;
+                    $reviewCount = $product->danhGia->count();
+                    $isInWishlist = Auth::check() ? \Illuminate\Support\Facades\DB::table('yeu_thich')->where('nguoi_dung_id', Auth::id())->where('san_pham_id', $product->id)->exists() : false;
+                @endphp
+                <div class="product-card">
+                    <button class="wishlist-icon {{ $isInWishlist ? 'added' : '' }}" data-product-id="{{ $product->id }}" data-is-added="{{ $isInWishlist ? 'true' : 'false' }}">
+                        <i class="{{ $isInWishlist ? 'fas' : 'far' }} fa-heart"></i>
+                    </button>
+                    
+                    @if($discount > 0)
+                        <div class="product-badge">-{{ $discount }}%</div>
+                    @endif
+                    
+                    {{-- FIX: Wrap toàn bộ product-image bằng link chi tiết --}}
+                    <a href="{{ route('products.show', $product->slug) }}" class="product-image">
+                        <img src="{{ $imagePath }}" alt="{{ $product->ten }}">
+                        {{-- Quick-view button gây lỗi đã được loại bỏ khỏi đây --}}
+                    </a>
+                    
+                    <div class="product-info">
+                        <h3><a href="{{ route('products.show', $product->slug) }}">{{ $product->ten }}</a></h3>
+                        
+                        <div class="product-rating">
+                            @for($i = 1; $i <= 5; $i++)
+                                @if($i <= floor($avgRating)) <i class="fas fa-star"></i>
+                                @elseif($i - 0.5 <= $avgRating) <i class="fas fa-star-half-alt"></i>
+                                @else <i class="far fa-star"></i>
+                                @endif
+                            @endfor
+                            <span>({{ $reviewCount }})</span>
+                        </div>
+                        <div class="product-price">
+                            <span class="price-new">{{ number_format($minPrice, 0, ',', '.') }}₫</span>
+                            @if($comparePrice > $minPrice)
+                                <span class="price-old">{{ number_format($comparePrice, 0, ',', '.') }}₫</span>
+                            @endif
+                        </div>
+                        <button class="btn btn-cart add-to-cart-btn" 
+                                data-variant-id="{{ $variant->id ?? '' }}" 
+                                data-product-name="{{ $product->ten }}"
+                                @if(!$variant) disabled @endif>
+                            <i class="fas fa-shopping-cart"></i> Thêm vào giỏ
+                        </button>
+                    </div>
+                </div>
+            @empty
+                <p class="text-center col-12">Không có sản phẩm Flash Sale nào.</p>
+            @endforelse
+        </div>
+    </div>
+</section>
 
-    <script src="{{ asset('js/main.js') }}"></script>
-</body>
-</html>
+<section class="hot-brands">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-fire"></i> THƯƠNG HIỆU NỔI BẬT</h2>
+        </div>
+        <div class="brands-grid">
+            @foreach($brands as $brand)
+                @php
+                    $logo = '';
+                    if ($brand->slug == 'apple') $logo = asset('images/brands/apple.png');
+                    elseif ($brand->slug == 'samsung') $logo = asset('images/brands/samsung.png');
+                    elseif ($brand->slug == 'xiaomi') $logo = asset('images/brands/xiaomi.png');
+                    elseif ($brand->slug == 'oppo') $logo = asset('images/brands/oppo.png');
+                    elseif ($brand->slug == 'vivo') $logo = asset('images/brands/vivo.png');
+                    else $logo = 'https://via.placeholder.com/80x40';
+                @endphp
+                <a href="{{ route('products.index', ['brand' => $brand->slug]) }}" class="brand-card">
+                    <img src="{{ $logo }}" alt="{{ $brand->ten }}">
+                    <span>{{ $brand->ten }}</span>
+                </a>
+            @endforeach
+            <a href="#" class="brand-card">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Realme_logo.svg" alt="Realme">
+                <span>Realme</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="featured-products">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-crown"></i> SẢN PHẨM NỔI BẬT</h2>
+            <a href="{{ route('products.index') }}" class="view-all">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="product-grid">
+            @forelse($featuredProducts as $product)
+                @php
+                    $variant = $product->bienTheSanPham->first();
+                    $minPrice = $variant ? $variant->gia : 0;
+                    $comparePrice = $variant ? $variant->gia_so_sanh : 0;
+                    $discount = $comparePrice > $minPrice ? round((($comparePrice - $minPrice) / $comparePrice) * 100) : 0;
+                    $imagePath = $product->hinh_anh_mac_dinh ? asset('uploads/' . $product->hinh_anh_mac_dinh) : 'https://via.placeholder.com/300';
+                    $avgRating = $product->danhGia->avg('so_sao') ?? 0;
+                    $reviewCount = $product->danhGia->count();
+                    $isInWishlist = Auth::check() ? \Illuminate\Support\Facades\DB::table('yeu_thich')->where('nguoi_dung_id', Auth::id())->where('san_pham_id', $product->id)->exists() : false;
+                @endphp
+                <div class="product-card">
+                    <button class="wishlist-icon {{ $isInWishlist ? 'added' : '' }}" data-product-id="{{ $product->id }}" data-is-added="{{ $isInWishlist ? 'true' : 'false' }}">
+                        <i class="{{ $isInWishlist ? 'fas' : 'far' }} fa-heart"></i>
+                    </button>
+                    
+                    <div class="product-badge new">MỚI</div>
+                    
+                    {{-- FIX: Wrap toàn bộ product-image bằng link chi tiết --}}
+                    <a href="{{ route('products.show', $product->slug) }}" class="product-image">
+                        <img src="{{ $imagePath }}" alt="{{ $product->ten }}">
+                    </a>
+
+                    <div class="product-info">
+                        <h3><a href="{{ route('products.show', $product->slug) }}">{{ $product->ten }}</a></h3>
+                        <div class="product-rating">
+                            @for($i = 1; $i <= 5; $i++)
+                                @if($i <= floor($avgRating)) <i class="fas fa-star"></i>
+                                @elseif($i - 0.5 <= $avgRating) <i class="fas fa-star-half-alt"></i>
+                                @else <i class="far fa-star"></i>
+                                @endif
+                            @endfor
+                            <span>({{ $reviewCount }})</span>
+                        </div>
+                        <div class="product-price">
+                            <span class="price-new">{{ number_format($minPrice, 0, ',', '.') }}₫</span>
+                        </div>
+                        <button class="btn btn-cart add-to-cart-btn" 
+                                data-variant-id="{{ $variant->id ?? '' }}" 
+                                data-product-name="{{ $product->ten }}"
+                                @if(!$variant) disabled @endif>
+                            <i class="fas fa-shopping-cart"></i> Thêm vào giỏ
+                        </button>
+                    </div>
+                </div>
+            @empty
+                <p class="text-center col-12">Không có sản phẩm nổi bật nào.</p>
+            @endforelse
+        </div>
+    </div>
+</section>
+
+<section class="news-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-newspaper"></i> TIN CÔNG NGHỆ</h2>
+            <a href="#" class="view-all">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="news-grid">
+            <article class="news-card">
+                <img src="https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400&h=250&fit=crop" alt="News">
+                <div class="news-content">
+                    <span class="news-date"><i class="far fa-calendar"></i> 15/12/2024</span>
+                    <h3>iPhone 16 Pro Max có gì mới? Đáng mua không?</h3>
+                    <p>Cùng tìm hiểu những nâng cấp đáng giá trên thế hệ iPhone mới nhất...</p>
+                    <a href="#" class="read-more">Đọc thêm <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </article>
+            
+            <article class="news-card">
+                <img src="https://images.unsplash.com/photo-1617802690658-1173a3d117d2?w=400&h=250&fit=crop" alt="News">
+                <div class="news-content">
+                    <span class="news-date"><i class="far fa-calendar"></i> 14/12/2024</span>
+                    <h3>So sánh Galaxy S24 Ultra vs iPhone 15 Pro Max</h3>
+                    <p>Cuộc chiến flagship giữa hai ông lớn, điện thoại nào phù hợp với bạn...</p>
+                    <a href="#" class="read-more">Đọc thêm <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </article>
+            
+            <article class="news-card">
+                <img src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=250&fit=crop" alt="News">
+                <div class="news-content">
+                    <span class="news-date"><i class="far fa-calendar"></i> 13/12/2024</span>
+                    <h3>Top 5 điện thoại dưới 5 triệu đáng mua nhất</h3>
+                    <p>Gợi ý những sản phẩm tốt nhất trong phân khúc giá rẻ...</p>
+                    <a href="#" class="read-more">Đọc thêm <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+@endsection
+
+@push('styles')
+    <style>
+        /* CSS BỔ SUNG QUAN TRỌNG CHO SLIDER ARROWS VÀ BANNER DISPLAY */
+        .slider-wrapper {
+            position: relative; 
+            height: 450px; 
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0; 
+            transition: opacity 1s ease-in-out;
+        }
+
+        .slide.active {
+            opacity: 1; 
+            z-index: 1; 
+        }
+
+        .slider-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 15px;
+            z-index: 10;
+            cursor: pointer;
+            transition: all 0.3s;
+            opacity: 0.8;
+            border-radius: 5px;
+        }
+
+        .slider-arrow:hover {
+            opacity: 1;
+            background: var(--primary-color);
+        }
+
+        .arrow-left {
+            left: 20px;
+        }
+
+        .arrow-right {
+            right: 20px;
+        }
+    </style>
+@endpush
+
+@push('scripts')
+<script>
+    const csrfToken = '{{ csrf_token() }}';
+    const isLoggedIn = {{ auth()->check() ? 'true' : 'false' }};
+    const loginUrl = '{{ route("login") }}';
+    
+    // Hàm cập nhật số lượng badge
+    function updateCartBadge(count) {
+        document.querySelector('.header-actions .cart-btn .badge').textContent = count;
+    }
+    function updateWishlistBadge(count) {
+        document.querySelector('.header-actions .wishlist-btn .badge').textContent = count;
+    }
+
+    // --- LOGIC THÊM VÀO GIỎ HÀNG (ADD TO CART) ---
+    document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (this.disabled) return;
+
+            const variantId = this.dataset.variantId;
+            
+            if (!isLoggedIn) {
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Vui lòng đăng nhập để thêm vào giỏ hàng!', 'error') : alert('Vui lòng đăng nhập!');
+                setTimeout(() => { window.location.href = loginUrl; }, 1000);
+                return;
+            }
+            
+            if (!variantId) {
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Sản phẩm không có biến thể hợp lệ!', 'error') : alert('Sản phẩm không có biến thể hợp lệ!');
+                return;
+            }
+            
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang thêm...';
+
+            fetch('{{ route('cart.add') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    bien_the_id: variantId,
+                    so_luong: 1
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-shopping-cart"></i> Thêm vào giỏ';
+
+                if (data.success) {
+                    window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message, 'success') : alert(data.message);
+                    updateCartBadge(data.cart_count);
+                } else {
+                    window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message || 'Có lỗi xảy ra!', 'error') : alert(data.message);
+                }
+            })
+            .catch(error => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-shopping-cart"></i> Thêm vào giỏ';
+                console.error('Error adding to cart:', error);
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Lỗi kết nối máy chủ!', 'error') : alert('Lỗi kết nối máy chủ!');
+            });
+        });
+    });
+
+    // --- LOGIC YÊU THÍCH (WISHLIST) ---
+    document.querySelectorAll('.wishlist-icon').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const productId = this.dataset.productId;
+            let isAdded = this.dataset.isAdded === 'true';
+            
+            if (!isLoggedIn) {
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Vui lòng đăng nhập để thêm vào yêu thích!', 'error') : alert('Vui lòng đăng nhập!');
+                setTimeout(() => { window.location.href = loginUrl; }, 1000);
+                return;
+            }
+            
+            this.disabled = true;
+            
+            const url = isAdded 
+                        ? '{{ route('wishlist.remove', '__id__') }}'.replace('__id__', productId)
+                        : '{{ route('wishlist.add') }}';
+            const method = isAdded ? 'DELETE' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: method === 'POST' ? JSON.stringify({ san_pham_id: productId }) : null
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.disabled = false;
+                if (data.success) {
+                    window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message, 'success') : alert(data.message);
+                    updateWishlistBadge(data.wishlist_count);
+                    
+                    if (isAdded) {
+                        this.dataset.isAdded = 'false';
+                        this.querySelector('i').classList.remove('fas');
+                        this.querySelector('i').classList.add('far');
+                        this.classList.remove('added');
+                    } else {
+                        this.dataset.isAdded = 'true';
+                        this.querySelector('i').classList.remove('far');
+                        this.querySelector('i').classList.add('fas');
+                        this.classList.add('added');
+                    }
+                } else {
+                    if(data.message && data.message.includes('đã có')) {
+                        this.dataset.isAdded = 'true';
+                        this.querySelector('i').classList.remove('far');
+                        this.querySelector('i').classList.add('fas');
+                        this.classList.add('added');
+                    }
+                    window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message || 'Có lỗi xảy ra!', 'error') : alert(data.message);
+                }
+            })
+            .catch(error => {
+                this.disabled = false;
+                console.error('Error handling wishlist:', error);
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Lỗi kết nối máy chủ!', 'error') : alert('Lỗi kết nối máy chủ!');
+            });
+        });
+    });
+
+    // Khởi tạo Countdown Timer
+    if (typeof initCountdownTimer !== 'undefined') {
+        initCountdownTimer();
+    }
+</script>
+@endpush

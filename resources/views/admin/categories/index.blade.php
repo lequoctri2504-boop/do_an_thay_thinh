@@ -27,7 +27,8 @@
                     <td>{{ $cat->id }}</td>
                     <td><strong>{{ $cat->ten }}</strong></td>
                     <td>{{ $cat->slug }}</td>
-                    <td>{{ $cat->danhMucCha ? $cat->danhMucCha->ten : '---' }}</td>
+                    {{-- FIX LỖI: Thay thế $cat->danhMucCha bằng $cat->parent --}}
+                    <td>{{ $cat->parent ? $cat->parent->ten : '---' }}</td>
                     <td>
                         <a href="{{ route('admin.categories.edit', $cat->id) }}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
                         <form action="{{ route('admin.categories.destroy', $cat->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Xóa danh mục này?');">

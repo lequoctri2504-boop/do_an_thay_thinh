@@ -348,12 +348,21 @@ class AdminController extends Controller
     /**
      * 1. Hiển thị danh sách sản phẩm
      */
+    // public function products()
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+    //     // Eager load 'bienThe' để lấy giá hiển thị
+    //     $products = SanPham::with('bienThe')->orderBy('created_at', 'desc')->paginate(10);
+
+    //     return view('admin.products', compact('products'));
+    // }
     public function products()
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        // Eager load 'bienThe' để lấy giá hiển thị
-        $products = SanPham::with('bienThe')->orderBy('created_at', 'desc')->paginate(10);
+        // FIX LỖI: Dùng 'bienTheSanPham' thay vì 'bienThe'
+        $products = SanPham::with('bienTheSanPham')->orderBy('created_at', 'desc')->paginate(10);
 
         return view('admin.products', compact('products'));
     }
@@ -429,19 +438,31 @@ class AdminController extends Controller
     /**
      * 4. Form sửa sản phẩm
      */
+    // public function editProduct($id)
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+    //     $product = SanPham::with('bienThe')->findOrFail($id);
+    //     $thuongHieu = ThuongHieu::all();
+        
+    //     // Lấy biến thể đầu tiên để hiển thị thông tin giá/sku
+    //     $firstVariant = $product->bienThe->first();
+
+    //     return view('admin.products.edit', compact('product', 'thuongHieu', 'firstVariant'));
+    // }
     public function editProduct($id)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        $product = SanPham::with('bienThe')->findOrFail($id);
+        // FIX LỖI: Dùng 'bienTheSanPham' thay vì 'bienThe'
+        $product = SanPham::with('bienTheSanPham')->findOrFail($id);
         $thuongHieu = ThuongHieu::all();
         
-        // Lấy biến thể đầu tiên để hiển thị thông tin giá/sku
-        $firstVariant = $product->bienThe->first();
+        // SỬ DỤNG TÊN MỐI QUAN HỆ ĐÚNG
+        $firstVariant = $product->bienTheSanPham->first();
 
         return view('admin.products.edit', compact('product', 'thuongHieu', 'firstVariant'));
     }
-
     /**
      * 5. Xử lý cập nhật sản phẩm
      */
@@ -541,10 +562,17 @@ class AdminController extends Controller
     // =========================================================================
     // QUẢN LÝ DANH MỤC (CATEGORIES)
     // =========================================================================
+    // public function categories()
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+    //     $categories = DanhMuc::with('danhMucCha')->orderBy('created_at', 'desc')->paginate(10);
+    //     return view('admin.categories.index', compact('categories'));
+    // }
     public function categories()
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-        $categories = DanhMuc::with('danhMucCha')->orderBy('created_at', 'desc')->paginate(10);
+        // FIX LỖI: Thay thế 'danhMucCha' bằng 'parent'
+        $categories = DanhMuc::with('parent')->orderBy('created_at', 'desc')->paginate(10);
         return view('admin.categories.index', compact('categories'));
     }
 
@@ -631,13 +659,37 @@ class AdminController extends Controller
         return view('admin.orders', compact('orders'));
     }
 
+
+    // khuyễn mãi promotion
+    // public function promotions()
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) {
+    //         return $redirect;
+    //     }
+
+    //     return view('admin.promotions');
+    // }
+    protected function getSimulatedPromotions() {
+        // Dữ liệu mẫu (sử dụng Carbon cho ngày tháng)
+        return collect([
+            (object)['id' => 1, 'name' => 'Ưu đãi Black Friday', 'code' => 'BFCM2025', 'discount' => '10% (Max 500k)', 'start_date' => '2025-11-01', 'end_date' => '2025-11-30', 'status' => 'Đã kết thúc'],
+            (object)['id' => 2, 'name' => 'Chào mừng năm mới', 'code' => 'TET2026', 'discount' => '500.000₫', 'start_date' => '2026-01-01', 'end_date' => '2026-02-15', 'status' => 'Đang diễn ra'],
+            (object)['id' => 3, 'name' => 'Giảm giá chào hè', 'code' => 'HE2026', 'discount' => '20%', 'start_date' => '2026-06-01', 'end_date' => '2026-08-31', 'status' => 'Chưa bắt đầu'],
+        ]);
+    }
+    public function createPromotion()
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        return view('admin.promotions.create');
+    }
+
     public function promotions()
     {
-        if ($redirect = $this->ensureAdminOrStaff()) {
-            return $redirect;
-        }
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        $promotions = $this->getSimulatedPromotions();
 
-        return view('admin.promotions');
+        return view('admin.promotions', compact('promotions'));
     }
     // =========================================================================
     // QUẢN LÝ THƯƠNG HIỆU (BRANDS)
