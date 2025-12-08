@@ -91,10 +91,13 @@
                             @if($discount > 0)
                                 <div class="product-badge">-{{ $discount }}%</div>
                             @endif
-                            <div class="product-image">
+                            
+                            {{-- FIX 1: Wrap image in the link (products.show) và xóa quick-view --}}
+                            <a href="{{ route('products.show', $product->slug) }}" class="product-image"> 
                                 <img src="{{ $imagePath }}" alt="{{ $product->ten }}">
-                                <a href="{{ route('products.show', $product->slug) }}" class="quick-view"><i class="fas fa-eye"></i></a>
-                            </div>
+                                {{-- Loại bỏ <a href="{{ route('products.show', $product->slug) }}" class="quick-view"><i class="fas fa-eye"></i></a> --}}
+                            </a>
+                            
                             <div class="product-info">
                                 <h3><a href="{{ route('products.show', $product->slug) }}">{{ $product->ten }}</a></h3>
                                 
@@ -136,3 +139,73 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+    const csrfToken = '{{ csrf_token() }}';
+    const isLoggedIn = {{ auth()->check() ? 'true' : 'false' }};
+    const loginUrl = '{{ route("login") }}';
+    
+    function updateCartBadge(count) {
+        const badges = document.querySelectorAll('.header-actions .cart-btn .badge');
+        badges.forEach(badge => {
+            badge.textContent = count;
+        });
+    }
+
+    document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (this.disabled) return;
+
+            const variantId = this.dataset.variantId;
+            
+            if (!isLoggedIn) {
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Vui lòng đăng nhập để thêm vào giỏ hàng!', 'error') : alert('Vui lòng đăng nhập!');
+                setTimeout(() => { window.location.href = loginUrl; }, 1000);
+                return;
+            }
+            
+            if (!variantId) {
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Sản phẩm không có biến thể hợp lệ!', 'error') : alert('Sản phẩm không có biến thể hợp lệ!');
+                return;
+            }
+            
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang thêm...';
+
+            fetch('{{ route('cart.add') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    bien_the_id: variantId,
+                    so_luong: 1
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-shopping-cart"></i> Thêm vào giỏ';
+
+                if (data.success) {
+                    window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message, 'success') : alert(data.message);
+                    updateCartBadge(data.cart_count); 
+                } else {
+                    window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message || 'Có lỗi xảy ra!', 'error') : alert(data.message);
+                }
+            })
+            .catch(error => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-shopping-cart"></i> Thêm vào giỏ';
+                console.error('Error adding to cart:', error);
+                window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast('Lỗi kết nối máy chủ!', 'error') : alert('Lỗi kết nối máy chủ!');
+            });
+        });
+    });
+</script>
+@endpush

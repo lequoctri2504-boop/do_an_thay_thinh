@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Str;
 
@@ -136,6 +137,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        Session::forget(['cart_count', 'wishlist_count', 'discount_code', 'discount_amount']);
         return redirect()->route('login');
     }
 
@@ -167,6 +169,12 @@ class AuthController extends Controller
     // ==================== GOOGLE/FACEBOOK LOGIN ====================
     public function redirectToProvider($provider)
     {
+        // FIX: Thêm tham số 'prompt' để yêu cầu người dùng chọn lại tài khoản
+        if ($provider === 'google') {
+            return Socialite::driver('google')
+                ->with(['prompt' => 'select_account']) // <<< BỔ SUNG DÒNG NÀY >>>
+                ->redirect();
+        }
         return Socialite::driver($provider)->redirect();
     }
 

@@ -40,7 +40,7 @@
             </button>
             <div class="dropdown-menu">
                 <a href="#"><i class="fas fa-user"></i> Thông tin cá nhân</a>
-                <a href="#"><i class="fas fa-cog"></i> Cài đặt</a>
+                <!-- <a href="#"><i class="fas fa-cog"></i> Cài đặt</a> -->
                 <form action="{{ route('logout') }}" method="post" style="margin:0;">
                     @csrf
                     <button type="submit" class="dropdown-item"
@@ -74,6 +74,11 @@
                 <i class="fas fa-box"></i>
                 <span>Quản lý sản phẩm</span>
             </a>
+            <a href="{{ route('staff.news') }}"
+               class="nav-item {{ request()->routeIs('staff.news') || request()->routeIs('staff.news.*') ? 'active' : '' }}">
+                <i class="fas fa-newspaper"></i>
+                <span>Quản lý Tin tức</span>
+            </a>
 
             <a href="{{ route('staff.customers') }}"
                class="nav-item {{ request()->routeIs('staff.customers') ? 'active' : '' }}">
@@ -87,11 +92,11 @@
                 <span>Báo cáo - Thống kê</span>
             </a>
 
-            <a href="{{ route('staff.support') }}"
+            <!-- <a href="{{ route('staff.support') }}"
                class="nav-item {{ request()->routeIs('staff.support') ? 'active' : '' }}">
                 <i class="fas fa-headset"></i>
                 <span>Hỗ trợ khách hàng</span>
-            </a>
+            </a> -->
         </nav>
     </aside>
 

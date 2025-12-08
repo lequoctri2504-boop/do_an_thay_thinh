@@ -12,7 +12,7 @@ class User extends Authenticatable
     protected $table = 'nguoi_dung';  // ← Trỏ đến bảng nguoi_dung
     
     protected $fillable = [
-        'ten',
+        'ho_ten',
         'email',
         'mat_khau',
         'sdt',

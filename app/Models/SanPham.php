@@ -18,7 +18,9 @@ class SanPham extends Model
         'mo_ta',
         'mo_ta_chi_tiet',
         'anh_chinh',
-        'dang_ban'
+        'dang_ban',
+        'la_flash_sale',
+        'la_noi_bat',
     ];
     
     protected $dates = ['deleted_at'];

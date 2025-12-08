@@ -70,7 +70,7 @@
 
                     <div class="form-group">
                         <label>Họ và tên <span class="required">*</span></label>
-                        <input type="text" name="ten" class="form-control" value="{{ old('ten', $user->ho_ten) }}" required>
+                        <input type="text" name="ho_ten" class="form-control" value="{{ old('ho_ten', $user->ho_ten) }}" required>
                     </div>
 
                     <div class="form-row">

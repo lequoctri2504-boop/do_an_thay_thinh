@@ -7,6 +7,8 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\NewsController;
+
 // ==================== PUBLIC ROUTES ====================
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -64,11 +66,20 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::put('/categories/{id}', [AdminController::class, 'updateCategory'])->name('categories.update');
     Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory'])->name('categories.destroy');
 
+    // ĐƠN HÀNG
     Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
+    Route::get('/orders/{id}/edit', [AdminController::class, 'editOrder'])->name('orders.edit');
+    Route::put('/orders/{id}', [AdminController::class, 'updateOrder'])->name('orders.update');
+    Route::delete('/orders/{id}', [AdminController::class, 'deleteOrder'])->name('orders.destroy');
 
-    // khuyễn mãi
+
+    // KHUYẾN MÃI
     Route::get('/promotions', [AdminController::class, 'promotions'])->name('promotions');
     Route::get('/promotions/create', [AdminController::class, 'createPromotion'])->name('promotions.create');
+    Route::post('/promotions', [AdminController::class, 'storePromotion'])->name('promotions.store');
+    Route::get('/promotions/{id}/edit', [AdminController::class, 'editPromotion'])->name('promotions.edit');
+    Route::put('/promotions/{id}', [AdminController::class, 'updatePromotion'])->name('promotions.update');
+    Route::delete('/promotions/{id}', [AdminController::class, 'deletePromotion'])->name('promotions.destroy');
     
      // THƯƠNG HIỆU
     Route::get('/brands', [AdminController::class, 'brands'])->name('brands');
@@ -90,11 +101,32 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 // ==================== STAFF ROUTES ====================
 Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () {
     Route::get('/', [StaffController::class, 'index'])->name('dashboard');
+
+    // FIX: Update staff orders route to include full CRUD
     Route::get('/orders', [StaffController::class, 'orders'])->name('orders');
+    Route::get('/orders/{id}/edit', [StaffController::class, 'editOrder'])->name('orders.edit');
+    Route::put('/orders/{id}', [StaffController::class, 'updateOrder'])->name('orders.update');
+    Route::delete('/orders/{id}', [StaffController::class, 'deleteOrder'])->name('orders.destroy');
+
+
     Route::get('/products', [StaffController::class, 'products'])->name('products');
+    Route::get('/products/{id}/edit', [StaffController::class, 'editProduct'])->name('products.edit');
+    Route::put('/products/{id}', [StaffController::class, 'updateProduct'])->name('products.update');
+
+    Route::post('/products/{id}/toggle-flag', [StaffController::class, 'toggleProductFlag'])->name('products.toggle_flag');
+
+
     Route::get('/customers', [StaffController::class, 'customers'])->name('customers');
     Route::get('/support', [StaffController::class, 'support'])->name('support');
     Route::get('/reports', [StaffController::class, 'reports'])->name('reports');
+
+    // QUẢN LÝ TIN CÔNG NGHỆ (MỚI)
+    Route::get('/news', [StaffController::class, 'news'])->name('news');
+    Route::get('/news/create', [StaffController::class, 'createNews'])->name('news.create');
+    Route::post('/news', [StaffController::class, 'storeNews'])->name('news.store');
+    Route::get('/news/{id}/edit', [StaffController::class, 'editNews'])->name('news.edit');
+    Route::put('/news/{id}', [StaffController::class, 'updateNews'])->name('news.update');
+    Route::delete('/news/{id}', [StaffController::class, 'deleteNews'])->name('news.destroy');
 });
 
 // ==================== CUSTOMER ROUTES ====================
@@ -119,8 +151,12 @@ use App\Http\Controllers\WishlistController;
 Route::prefix('san-pham')->name('products.')->group(function () {
     Route::get('/', [ProductController::class, 'index'])->name('index');
     Route::get('/tim-kiem', [ProductController::class, 'search'])->name('search');
+    // THÊM ROUTE CHO SẢN PHẨM NỔI BẬT
+    Route::get('/noi-bat', [ProductController::class, 'featuredProducts'])->name('featured'); 
     Route::get('/danh-muc/{slug}', [ProductController::class, 'category'])->name('category');
     Route::get('/{slug}', [ProductController::class, 'show'])->name('show');
+
+    
 });
 
 // ==================== THƯƠNG HIỆU ====================
@@ -137,6 +173,9 @@ Route::prefix('gio-hang')->name('cart.')->group(function () {
     Route::put('/{id}', [CartController::class, 'update'])->name('update');
     Route::delete('/{id}', [CartController::class, 'remove'])->name('remove');
     Route::delete('/', [CartController::class, 'clear'])->name('clear');
+    
+    // FIX LỖI: Thêm route áp dụng mã giảm giá
+    Route::post('/ap-ma-giam-gia', [CartController::class, 'applyDiscount'])->name('apply.discount');
 });
 
 // ==================== YÊU CẦU ĐĂNG NHẬP ====================
@@ -148,20 +187,29 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/dat-hang', [OrderController::class, 'place'])->name('place');
         Route::get('/{id}', [OrderController::class, 'show'])->name('show');
         Route::post('/{id}/huy', [OrderController::class, 'cancel'])->name('cancel');
+        
+        // Route áp dụng mã giảm giá trên trang checkout (để dự phòng)
+        Route::post('/ap-ma-giam-gia', [OrderController::class, 'applyDiscount'])->name('apply.discount');
     });
 
     // Thanh toán ZaloPay
     Route::prefix('thanh-toan')->name('payment.')->group(function () {
-        Route::get('/zalopay/{order_id}', [OrderController::class, 'zalopayCreate'])->name('zalopay.create');
-        Route::post('/zalopay/callback', [OrderController::class, 'zalopayCallback'])->name('zalopay.callback');
-    });
+    // 1. Route tạo giao dịch (vẫn dùng route name cũ, nhưng logic là VNPAY)
+    Route::get('/vnpay/create/{order_id}', [OrderController::class, 'zalopayCreate'])->name('zalopay.create');
+    
+    // 2. Route Return URL (Browser Redirect) - Dùng GET
+    Route::get('/vnpay/return', [OrderController::class, 'vnpayReturn'])->name('vnpay.return');
+    
+    // 3. Route IPN (Server-to-Server Notification) - Dùng POST
+    Route::post('/vnpay/ipn', [OrderController::class, 'vnpayIPN'])->name('vnpay.ipn');
+});
 
     // Tài khoản khách hàng
     Route::prefix('tai-khoan')->name('customer.')->group(function () {
         Route::get('/thong-tin', [CustomerController::class, 'profile'])->name('profile');
         Route::put('/cap-nhat', [CustomerController::class, 'updateProfile'])->name('update');
         Route::get('/don-hang', [CustomerController::class, 'orders'])->name('orders');
-        Route::get('/yeu-thich', [CustomerController::class, 'wishlist'])->name('wishlist');
+        Route::get('/wishlist', [CustomerController::class, 'wishlist'])->name('wishlist');
         Route::get('/dia-chi', [CustomerController::class, 'addresses'])->name('addresses');
         Route::post('/dia-chi', [CustomerController::class, 'addAddress'])->name('addresses.add');
         Route::put('/dia-chi/{id}', [CustomerController::class, 'updateAddress'])->name('addresses.update');
@@ -186,3 +234,9 @@ Route::get('/huong-dan-mua-hang', fn() => view('pages.guide'))->name('guide');
 Route::get('/chinh-sach-bao-mat', fn() => view('pages.privacy'))->name('privacy');
 Route::get('/dieu-khoan-su-dung', fn() => view('pages.terms'))->name('terms');
 Route::get('/khuyen-mai', fn() => view('pages.promotions'))->name('promotions');
+
+// ==================== TIN TỨC CÔNG NGHỆ ====================
+Route::prefix('tin-tuc')->name('news.')->group(function () {
+    Route::get('/', [NewsController::class, 'index'])->name('index');
+    Route::get('/{slug}', [NewsController::class, 'show'])->name('show');
+});

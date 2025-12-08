@@ -54,14 +54,14 @@ class CustomerController extends Controller
         $user = User::findOrFail(Auth::id());
         
         $request->validate([
-            'ten' => 'required|string|max:191',
+            'ho_ten' => 'required|string|max:191',
             'email' => 'required|email|max:191|unique:nguoi_dung,email,' . $user->id,
             'sdt' => 'nullable|string|max:32',
             'dia_chi' => 'nullable|string|max:500',
             'mat_khau_cu' => 'nullable|string',
             'mat_khau_moi' => 'nullable|string|min:6|confirmed',
         ], [
-            'ten.required' => 'Vui lòng nhập tên',
+            'ho_ten.required' => 'Vui lòng nhập tên',
             'email.required' => 'Vui lòng nhập email',
             'email.email' => 'Email không hợp lệ',
             'email.unique' => 'Email đã được sử dụng',
@@ -71,7 +71,7 @@ class CustomerController extends Controller
         
         try {
             // Cập nhật thông tin cơ bản
-            $user->ten = $request->ten;
+            $user->ho_ten = $request->ho_ten;
             $user->email = $request->email;
             $user->sdt = $request->sdt;
             $user->dia_chi = $request->dia_chi;
@@ -108,20 +108,67 @@ class CustomerController extends Controller
     /**
      * Hiển thị danh sách đơn hàng
      */
+    // public function orders(Request $request)
+    // {
+    //     if (!Auth::check()) {
+    //         return redirect()->route('login')->with('error', 'Vui lòng đăng nhập!');
+    //     }
+        
+    //     $query = DonHang::where('nguoi_dung_id', Auth::id());
+        
+    //     // Lọc theo trạng thái
+    //     if ($request->has('status') && $request->status != '') {
+    //         $query->where('trang_thai', $request->status);
+    //     }
+        
+    //     // Lọc theo khoảng thời gian
+    //     if ($request->has('from_date') && $request->from_date != '') {
+    //         $query->whereDate('ngay_dat', '>=', $request->from_date);
+    //     }
+        
+    //     if ($request->has('to_date') && $request->to_date != '') {
+    //         $query->whereDate('ngay_dat', '<=', $request->to_date);
+    //     }
+        
+    //     // Tìm kiếm theo mã đơn hàng
+    //     if ($request->has('search') && $request->search != '') {
+    //         $query->where('ma', 'LIKE', '%' . $request->search . '%');
+    //     }
+        
+    //     $orders = $query->orderBy('ngay_dat', 'desc')->paginate(10);
+        
+    //     // Đếm số lượng đơn hàng theo trạng thái
+    //     $statusCounts = [
+    //         'all' => DonHang::where('nguoi_dung_id', Auth::id())->count(),
+    //         'DANG_XU_LY' => DonHang::where('nguoi_dung_id', Auth::id())
+    //             ->where('trang_thai', 'DANG_XU_LY')->count(),
+    //         'DANG_GIAO' => DonHang::where('nguoi_dung_id', Auth::id())
+    //             ->where('trang_thai', 'DANG_GIAO')->count(),
+    //         'HOAN_THANH' => DonHang::where('nguoi_dung_id', Auth::id())
+    //             ->where('trang_thai', 'HOAN_THANH')->count(),
+    //         'HUY' => DonHang::where('nguoi_dung_id', Auth::id())
+    //             ->where('trang_thai', 'HUY')->count()
+    //     ];
+        
+    //     return view('customer.orders', compact('orders', 'statusCounts'));
+    // }
     public function orders(Request $request)
     {
         if (!Auth::check()) {
             return redirect()->route('login')->with('error', 'Vui lòng đăng nhập!');
         }
         
-        $query = DonHang::where('nguoi_dung_id', Auth::id());
+        // Bắt đầu truy vấn và Eager Load chi tiết sản phẩm
+        $query = DonHang::where('nguoi_dung_id', Auth::id())
+                        ->with('chiTiet.bienThe.sanPham'); // <-- Bổ sung eager loading
         
         // Lọc theo trạng thái
-        if ($request->has('status') && $request->status != '') {
-            $query->where('trang_thai', $request->status);
+        $currentStatus = $request->input('status', 'all'); // Lấy trạng thái hiện tại
+        if ($currentStatus != 'all') {
+            $query->where('trang_thai', $currentStatus);
         }
         
-        // Lọc theo khoảng thời gian
+        // Lọc theo khoảng thời gian (tùy chọn, giữ nguyên logic cũ nếu có)
         if ($request->has('from_date') && $request->from_date != '') {
             $query->whereDate('ngay_dat', '>=', $request->from_date);
         }
@@ -136,6 +183,7 @@ class CustomerController extends Controller
         }
         
         $orders = $query->orderBy('ngay_dat', 'desc')->paginate(10);
+        $orders->appends($request->all()); // Giữ lại tham số lọc khi phân trang
         
         // Đếm số lượng đơn hàng theo trạng thái
         $statusCounts = [
@@ -150,7 +198,7 @@ class CustomerController extends Controller
                 ->where('trang_thai', 'HUY')->count()
         ];
         
-        return view('customer.orders', compact('orders', 'statusCounts'));
+        return view('customer.orders', compact('orders', 'statusCounts', 'currentStatus'));
     }
     
     /**

@@ -127,7 +127,7 @@
     <div class="container">
         <div class="section-header">
             <h2><i class="fas fa-crown"></i> SẢN PHẨM NỔI BẬT</h2>
-            <a href="{{ route('products.index') }}" class="view-all">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+            <a href="{{ route('products.featured') }}" class="view-all">Xem tất cả <i class="fas fa-arrow-right"></i></a>
         </div>
         <div class="product-grid">
             @forelse($featuredProducts as $product)
@@ -182,7 +182,7 @@
     </div>
 </section>
 
-<section class="news-section">
+<!-- <section class="news-section">
     <div class="container">
         <div class="section-header">
             <h2><i class="fas fa-newspaper"></i> TIN CÔNG NGHỆ</h2>
@@ -220,8 +220,39 @@
             </article>
         </div>
     </div>
-</section>
+</section> -->
 
+
+<section class="news-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-newspaper"></i> TIN CÔNG NGHỆ</h2>
+            <a href="{{ route('news.index') }}" class="view-all">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="news-grid">
+            @forelse($newsArticles as $article)
+            @php
+                $imagePath = $article->hinh_anh_chinh ? asset('uploads/' . $article->hinh_anh_chinh) : 'https://via.placeholder.com/400x250';
+                $moTaNgan = $article->mo_ta_ngan ?? \Illuminate\Support\Str::limit(strip_tags($article->noi_dung), 100);
+            @endphp
+            <article class="news-card">
+                <img src="{{ $imagePath }}" alt="{{ $article->tieu_de }}">
+                <div class="news-content">
+                    <span class="news-date"><i class="far fa-calendar"></i> {{ \Carbon\Carbon::parse($article->created_at)->format('d/m/Y') }}</span>
+                    <h3><a href="{{ route('news.show', $article->slug) }}">{{ $article->tieu_de }}</a></h3>
+                    <p>{{ $moTaNgan }}</p>
+                    <a href="{{ route('news.show', $article->slug) }}" class="read-more">Đọc thêm <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </article>
+            @empty
+            {{-- Giữ lại thông báo empty đã fix trước đó --}}
+            <article class="news-card" style="grid-column: 1 / -1; text-align: center;">
+                <p class="text-muted" style="padding: 20px;">Hiện chưa có bài viết nào được xuất bản.</p>
+            </article>
+            @endforelse
+        </div>
+    </div>
+</section>
 @endsection
 
 @push('styles')
@@ -284,12 +315,20 @@
     const isLoggedIn = {{ auth()->check() ? 'true' : 'false' }};
     const loginUrl = '{{ route("login") }}';
     
-    // Hàm cập nhật số lượng badge
+    // FIX QUAN TRỌNG: GHI ĐÈ hàm cập nhật Badge để sử dụng giá trị trực tiếp từ Server (data.cart_count)
     function updateCartBadge(count) {
-        document.querySelector('.header-actions .cart-btn .badge').textContent = count;
+        const badges = document.querySelectorAll('.header-actions .cart-btn .badge');
+        badges.forEach(badge => {
+            badge.textContent = count; // <-- Sử dụng count mới
+        });
     }
+    
+    // Hàm update wishlist (cũng cần fix để dùng count từ server)
     function updateWishlistBadge(count) {
-        document.querySelector('.header-actions .wishlist-btn .badge').textContent = count;
+        const badges = document.querySelectorAll('.header-actions .wishlist-btn .badge');
+        badges.forEach(badge => {
+            badge.textContent = count;
+        });
     }
 
     // --- LOGIC THÊM VÀO GIỎ HÀNG (ADD TO CART) ---
@@ -334,7 +373,7 @@
 
                 if (data.success) {
                     window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message, 'success') : alert(data.message);
-                    updateCartBadge(data.cart_count);
+                    updateCartBadge(data.cart_count); // <-- Cập nhật badge
                 } else {
                     window.PhoneShop && window.PhoneShop.showToast ? PhoneShop.showToast(data.message || 'Có lỗi xảy ra!', 'error') : alert(data.message);
                 }
@@ -365,7 +404,7 @@
             this.disabled = true;
             
             const url = isAdded 
-                        ? '{{ route('wishlist.remove', '__id__') }}'.replace('__id__', productId)
+                        ? '{{ route('wishlist.remove', ['id' => '__id__']) }}'.replace('__id__', productId)
                         : '{{ route('wishlist.add') }}';
             const method = isAdded ? 'DELETE' : 'POST';
             

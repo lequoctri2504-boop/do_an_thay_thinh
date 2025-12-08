@@ -3,25 +3,7 @@
 @section('title', 'Chi tiết đơn hàng #' . $order->ma)
 
 @section('content')
-    <header class="">
-        <div class="container">
-
-            <div class="checkout-steps">
-                <div class="step active">
-                    <span class="step-number">1</span>
-                    <span class="step-text">Giỏ hàng</span>
-                </div>
-                <div class="step active">
-                    <span class="step-number">2</span>
-                    <span class="step-text">Thanh toán</span>
-                </div>
-                <div class="step active"> 
-                    <span class="step-number">3</span>
-                    <span class="step-text">Hoàn thành</span>
-                </div>
-            </div>
-        </div>
-    </header>
+    
 
     <section class="order-show-page">
         <div class="container">
@@ -36,13 +18,45 @@
 
             <div class="order-show-layout">
                 <div class="order-info-column">
-                    <div class="info-section status-box">
+                    <!-- <div class="info-section status-box">
                         <h3><i class="fas fa-receipt"></i> Trạng thái & Tổng quan</h3>
                         <div class="status-detail">
                             <p><strong>Mã đơn hàng:</strong> <span>#{{ $order->ma }}</span></p>
                             <p><strong>Ngày đặt:</strong> <span>{{ \Carbon\Carbon::parse($order->ngay_dat)->format('H:i:s d/m/Y') }}</span></p>
                             <p><strong>Trạng thái ĐH:</strong> <span class="badge status-{{ strtolower($order->trang_thai) }}">{{ $order->trang_thai }}</span></p>
                             <p><strong>Trạng thái TT:</strong> <span class="badge payment-{{ strtolower($order->trang_thai_tt) }}">{{ $order->trang_thai_tt }}</span></p>
+                        </div>
+                    </div> -->
+                    <div class="info-section status-box">
+                        <h3><i class="fas fa-receipt"></i> Trạng thái & Tổng quan</h3>
+                        <div class="status-detail">
+                            <p><strong>Mã đơn hàng:</strong> <span>#{{ $order->ma }}</span></p>
+                            <p><strong>Ngày đặt:</strong> <span>{{ \Carbon\Carbon::parse($order->ngay_dat)->format('H:i:s d/m/Y') }}</span></p>
+
+                            @php
+                                // Logic ánh xạ Trạng thái Đơn hàng (ĐH)
+                                $status = strtolower($order->trang_thai);
+                                $statusClass = 'pending'; // Giá trị mặc định
+                                if ($status == 'dang_xu_ly') $statusClass = 'processing';
+                                elseif ($status == 'dang_giao') $statusClass = 'shipping';
+                                elseif ($status == 'hoan_thanh') $statusClass = 'delivered';
+                                elseif ($status == 'huy') $statusClass = 'cancelled';
+                                
+                                // Logic ánh xạ Trạng thái Thanh toán (TT)
+                                $paymentStatus = strtolower($order->trang_thai_tt);
+                                $paymentClass = 'pending';
+                                if ($paymentStatus == 'da_tt') $paymentClass = 'approved'; 
+                            @endphp
+
+                            {{-- Hiển thị Trạng thái ĐH --}}
+                            <p><strong>Trạng thái ĐH:</strong> 
+                                <span class="status-badge status-{{ $statusClass }}">{{ $order->trang_thai }}</span>
+                            </p>
+                            
+                            {{-- Hiển thị Trạng thái TT --}}
+                            <p><strong>Trạng thái TT:</strong> 
+                                <span class="status-badge payment-{{ $paymentClass }}">{{ $order->trang_thai_tt }}</span>
+                            </p>
                         </div>
                     </div>
                     

@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\SanPham;
 use App\Models\DanhMuc;
 use App\Models\ThuongHieu;
+use App\Models\BaiViet; // <<< BỔ SUNG MODEL TIN TỨC >>>
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str; // Cần cho Str::limit trong view
 
 class HomeController extends Controller
 {
@@ -39,8 +41,22 @@ class HomeController extends Controller
             ],
         ];
 
-        // Lấy tất cả sản phẩm đang hiển thị và có ít nhất 1 biến thể đang bán
-        $allProductsQuery = SanPham::with(['thuongHieu', 'bienTheSanPham' => function($query) {
+        // Lấy tất cả sản phẩm đang hiển thị
+        // $allProductsQuery = SanPham::with(['thuongHieu', 'bienTheSanPham' => function($query) {
+        //         $query->where('dang_ban', 1)->orderBy('gia', 'asc');
+        //     }, 'danhGia'
+        //     ])
+        //     ->whereNull('deleted_at')
+        //     ->where('hien_thi', 1)
+        //     ->whereHas('bienTheSanPham', function($query) {
+        //         $query->where('dang_ban', 1);
+        //     })
+        //     ->orderBy('created_at', 'desc');
+
+        // $allProducts = $allProductsQuery->get();
+        // $flashSaleProducts = $allProducts->take(4);
+        // $featuredProducts = $allProducts->skip(4)->take(4);
+        $productBaseQuery = SanPham::with(['thuongHieu', 'bienTheSanPham' => function($query) {
                 $query->where('dang_ban', 1)->orderBy('gia', 'asc');
             }, 'danhGia'
             ])
@@ -48,13 +64,23 @@ class HomeController extends Controller
             ->where('hien_thi', 1)
             ->whereHas('bienTheSanPham', function($query) {
                 $query->where('dang_ban', 1);
-            })
-            ->orderBy('created_at', 'desc');
+            });
 
-        $allProducts = $allProductsQuery->get();
+        // TÁCH QUERY DỰA TRÊN CỜ MỚI
+        $flashSaleProducts = $productBaseQuery->clone()->where('la_flash_sale', 1)->limit(4)->get();
+        $featuredProducts = $productBaseQuery->clone()->where('la_noi_bat', 1)->limit(4)->get();
+        
+        // Ensure relationships are loaded (mặc dù clone đã giữ lại with(), nhưng thêm load() cho an toàn)
+        $flashSaleProducts->load(['thuongHieu', 'bienTheSanPham', 'danhGia']);
+        $featuredProducts->load(['thuongHieu', 'bienTheSanPham', 'danhGia']);
+        
+        // <<< LẤY TIN TỨC TỪ DB (MỚI) >>>
+        $newsArticles = BaiViet::where('trang_thai', 'XUAT_BAN')
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->limit(3)
+            ->get();
 
-        $flashSaleProducts = $allProducts->take(4);
-        $featuredProducts = $allProducts->skip(4)->take(4);
 
         $cartCount = Session::get('cart_count', 0);
         $wishlistCount = 0;
@@ -74,7 +100,7 @@ class HomeController extends Controller
             Session::put('wishlist_count', $wishlistCount);
         }
 
-        // Truyền thêm biến 'banners'
-        return view('welcome', compact('categories', 'brands', 'flashSaleProducts', 'featuredProducts', 'cartCount', 'wishlistCount', 'banners'));
+        // Truyền thêm newsArticles vào view
+        return view('welcome', compact('categories', 'brands', 'flashSaleProducts', 'featuredProducts', 'cartCount', 'wishlistCount', 'banners', 'newsArticles'));
     }
 }

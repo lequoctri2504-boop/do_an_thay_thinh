@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Carbon\Carbon; // <-- Đã thêm Carbon để xử lý ngày tháng
 
 use App\Models\User;
 use App\Models\SanPham;
@@ -13,6 +14,8 @@ use App\Models\DonHang;
 use App\Models\ThuongHieu;
 use App\Models\BienTheSanPham;
 use App\Models\DanhMuc;
+use App\Models\DanhGia; // <-- ĐÃ THÊM
+use App\Models\KhuyenMai;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
@@ -35,187 +38,109 @@ class AdminController extends Controller
     }
 
     // DASHBOARD
-    public function index()
+    public function index(Request $request) // Đã cập nhật để nhận Request cho bộ lọc
     {
         if ($redirect = $this->ensureAdminOrStaff()) {
             return $redirect;
         }
 
-        // Một số thống kê đơn giản từ DB
+        $currentDate = Carbon::now();
+        $queryStart = null;
+        $queryEnd = null;
+        $selectedQuick = null; // Biến để theo dõi lựa chọn nhanh
+
+        // --- 1. Xử lý Lọc theo Ngày/Tháng/Năm ---
+        if ($request->has('quick_select') && $request->quick_select != '') {
+            $selectedQuick = $request->quick_select;
+            switch ($selectedQuick) {
+                case 'today':
+                    $queryStart = $currentDate->copy()->startOfDay();
+                    $queryEnd = $currentDate->copy()->endOfDay();
+                    break;
+                case 'this_month':
+                    $queryStart = $currentDate->copy()->startOfMonth();
+                    $queryEnd = $currentDate->copy()->endOfDay();
+                    break;
+                case 'this_year':
+                    $queryStart = $currentDate->copy()->startOfYear();
+                    $queryEnd = $currentDate->copy()->endOfDay();
+                    break;
+                case 'custom':
+                    // Custom logic được xử lý bên dưới bằng start_date/end_date
+                    if ($request->has('start_date') && $request->has('end_date') && $request->start_date && $request->end_date) {
+                        $queryStart = Carbon::parse($request->start_date)->startOfDay();
+                        $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+                    }
+                    break;
+            }
+        } 
+        
+        // Đặt giá trị mặc định nếu chưa được đặt (trường hợp lần đầu truy cập hoặc custom chưa có ngày)
+        if (is_null($queryStart) || is_null($queryEnd)) {
+            $queryStart = $currentDate->copy()->startOfMonth();
+            $queryEnd = $currentDate->copy()->endOfDay();
+            $selectedQuick = $selectedQuick ?? 'this_month';
+        }
+        
+        // --- 2. Thống kê theo điều kiện lọc ---
+        // Thống kê không lọc theo ngày
         $tongKhachHang = User::where('vai_tro', 'KHACH_HANG')->count();
-        $tongNhanVien   = User::where('vai_tro', 'NHAN_VIEN')->count();
-        $tongAdmin      = User::where('vai_tro', 'ADMIN')->count();
+        $tongSanPham    = SanPham::whereNull('deleted_at')->count();
 
-        $tongSanPham    = SanPham::count();
+        // Query cho Đơn hàng trong khoảng thời gian
+        $tongDonHang = DonHang::query()
+            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+            ->count();
+        
+        // Tính lại Doanh thu (ĐH HOAN_THANH trong khoảng thời gian)
+        $tongDoanhThu = DonHang::query()
+            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+            ->where('trang_thai', 'HOAN_THANH')
+            ->sum('thanh_tien');
 
-        $tongDonHang    = DonHang::count();
-        $tongDoanhThu   = DonHang::where('trang_thai', 'HOAN_THANH')->sum('thanh_tien');
+        // Thống kê Đơn hàng theo trạng thái
+        $donMoi = DonHang::query()
+            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+            ->where('trang_thai', 'DANG_XU_LY')
+            ->count();
+            
+        $donHoanThanh = DonHang::query()
+            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+            ->where('trang_thai', 'HOAN_THANH')
+            ->count();
+            
+        // Gán lại các biến ngày tháng (sử dụng request data nếu có, nếu không thì dùng giá trị đã tính)
+        $selectedStartDate = $request->start_date ?? $queryStart->format('Y-m-d');
+        $selectedEndDate = $request->end_date ?? $queryEnd->format('Y-m-d');
+
 
         return view('admin.dashboard', compact(
             'tongKhachHang',
-            'tongNhanVien',
-            'tongAdmin',
             'tongSanPham',
             'tongDonHang',
-            'tongDoanhThu'
+            'tongDoanhThu',
+            'donMoi',
+            'donHoanThanh',
+            'selectedStartDate',
+            'selectedEndDate',
+            'selectedQuick'
         ));
     }
 
     // QUẢN LÝ TÀI KHOẢN
-    // public function accounts()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) {
-    //         return $redirect;
-    //     }
-
-    //     $users = User::orderBy('created_at', 'desc')->paginate(10);
-
-    //     return view('admin.accounts', compact('users'));
-    // }
-
-    // // --- 1. HIỂN THỊ DANH SÁCH & TÌM KIẾM TÀI KHOẢN ---
-    // public function accounts(Request $request)
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     $query = User::query();
-
-    //     // Xử lý tìm kiếm
-    //     if ($request->has('keyword') && $request->keyword != '') {
-    //         $keyword = $request->keyword;
-    //         $query->where(function($q) use ($keyword) {
-    //             $q->where('name', 'like', "%{$keyword}%") // Tìm theo tên
-    //               ->orWhere('email', 'like', "%{$keyword}%") // Tìm theo email
-    //               ->orWhere('so_dien_thoai', 'like', "%{$keyword}%"); // Tìm theo SĐT (nếu có cột này)
-    //         });
-    //     }
-
-    //     // Sắp xếp mới nhất trước và phân trang
-    //     $users = $query->orderBy('created_at', 'desc')->paginate(10);
-
-    //     // Giữ lại tham số tìm kiếm khi chuyển trang (page 1 -> page 2)
-    //     $users->appends($request->all());
-
-    //     return view('admin.accounts', compact('users'));
-    // }
-
-    // // --- 2. FORM THÊM TÀI KHOẢN ---
-    // public function createAccount()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-    //     return view('admin.accounts.create');
-    // }
-
-    // // --- 3. XỬ LÝ LƯU TÀI KHOẢN MỚI ---
-    // public function storeAccount(Request $request)
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     $request->validate([
-    //         'name' => 'required|string|max:255',
-    //         'email' => 'required|email|unique:users,email',
-    //         'password' => 'required|min:6',
-    //         'vai_tro' => 'required|in:ADMIN,NHAN_VIEN,KHACH_HANG',
-    //     ], [
-    //         'email.unique' => 'Email này đã được sử dụng.',
-    //         'password.min' => 'Mật khẩu phải từ 6 ký tự trở lên.'
-    //     ]);
-
-    //     try {
-    //         $user = new User();
-    //         $user->name = $request->name;
-    //         $user->email = $request->email;
-    //         $user->password = Hash::make($request->password); // Mã hóa mật khẩu
-    //         $user->vai_tro = $request->vai_tro;
-            
-    //         // Nếu bảng users của bạn có cột so_dien_thoai, dia_chi thì thêm vào đây:
-    //         // $user->so_dien_thoai = $request->so_dien_thoai;
-    //         // $user->dia_chi = $request->dia_chi;
-
-    //         $user->save();
-
-    //         return redirect()->route('admin.accounts')->with('success', 'Tạo tài khoản thành công!');
-    //     } catch (\Exception $e) {
-    //         return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
-    //     }
-    // }
-
-    // // --- 4. FORM SỬA TÀI KHOẢN ---
-    // public function editAccount($id)
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     $user = User::findOrFail($id);
-    //     return view('admin.accounts.edit', compact('user'));
-    // }
-
-    // // --- 5. XỬ LÝ CẬP NHẬT TÀI KHOẢN ---
-    // public function updateAccount(Request $request, $id)
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     $user = User::findOrFail($id);
-
-    //     $request->validate([
-    //         'name' => 'required|string|max:255',
-    //         'email' => 'required|email|unique:users,email,' . $user->id, // Cho phép trùng email của chính mình
-    //         'vai_tro' => 'required|in:ADMIN,NHAN_VIEN,KHACH_HANG',
-    //         'password' => 'nullable|min:6', // Mật khẩu không bắt buộc khi sửa
-    //     ], [
-    //         'email.unique' => 'Email này đã được sử dụng bởi tài khoản khác.',
-    //     ]);
-
-    //     try {
-    //         $user->name = $request->name;
-    //         $user->email = $request->email;
-    //         $user->vai_tro = $request->vai_tro;
-            
-    //         // Nếu có nhập mật khẩu mới thì mới cập nhật
-    //         if ($request->filled('password')) {
-    //             $user->password = Hash::make($request->password);
-    //         }
-
-    //         // Cập nhật SĐT nếu có
-    //         if ($request->has('so_dien_thoai')) {
-    //             $user->so_dien_thoai = $request->so_dien_thoai;
-    //         }
-
-    //         $user->save();
-
-    //         return redirect()->route('admin.accounts')->with('success', 'Cập nhật tài khoản thành công!');
-    //     } catch (\Exception $e) {
-    //         return back()->with('error', 'Lỗi: ' . $e->getMessage());
-    //     }
-    // }
-
-    // // --- 6. XÓA TÀI KHOẢN ---
-    // public function deleteAccount($id)
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     try {
-    //         // Không cho phép tự xóa chính mình
-    //         if (Auth::id() == $id) {
-    //             return back()->with('error', 'Bạn không thể xóa tài khoản của chính mình đang đăng nhập!');
-    //         }
-
-    //         $user = User::findOrFail($id);
-    //         $user->delete();
-
-    //         return redirect()->route('admin.accounts')->with('success', 'Đã xóa tài khoản!');
-    //     } catch (\Exception $e) {
-    //         return back()->with('error', 'Xóa thất bại: ' . $e->getMessage());
-    //     }
-    // }
-
-    // 1. HIỂN THỊ & TÌM KIẾM
     public function accounts(Request $request)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
         $query = User::query();
 
-        // Tìm kiếm theo ho_ten, email, sdt
+        // --- 1. Lọc theo Vai trò ---
+        $vaiTro = $request->input('vai_tro');
+        if ($vaiTro && in_array($vaiTro, ['ADMIN', 'NHAN_VIEN', 'KHACH_HANG'])) {
+            $query->where('vai_tro', $vaiTro);
+        }
+        
+        // --- 2. Tìm kiếm theo ho_ten, email, sdt ---
         if ($request->has('keyword') && $request->keyword != '') {
             $keyword = $request->keyword;
             $query->where(function($q) use ($keyword) {
@@ -224,11 +149,22 @@ class AdminController extends Controller
                   ->orWhere('sdt', 'like', "%{$keyword}%");
             });
         }
+        
+        // --- 3. Sắp xếp ---
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+        
+        if (!in_array($sortBy, ['id', 'ho_ten', 'email', 'vai_tro', 'created_at'])) {
+            $sortBy = 'created_at';
+        }
+        if (!in_array(strtolower($sortOrder), ['asc', 'desc'])) {
+            $sortOrder = 'desc';
+        }
 
-        $users = $query->orderBy('created_at', 'desc')->paginate(10);
+        $users = $query->orderBy($sortBy, $sortOrder)->paginate(10);
         $users->appends($request->all());
 
-        return view('admin.accounts', compact('users'));
+        return view('admin.accounts', compact('users', 'vaiTro', 'sortBy', 'sortOrder'));
     }
 
     // 2. FORM THÊM
@@ -328,43 +264,64 @@ class AdminController extends Controller
 
 
     // QUẢN LÝ SẢN PHẨM
-    // public function products()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) {
-    //         return $redirect;
-    //     }
-
-    //     $products = SanPham::orderBy('created_at', 'desc')->paginate(10);
-
-    //     return view('admin.products', compact('products'));
-    // }
-
-
-
-    // =========================================================================
-    // QUẢN LÝ SẢN PHẨM (FULL CRUD)
-    // =========================================================================
-
-    /**
-     * 1. Hiển thị danh sách sản phẩm
-     */
-    // public function products()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     // Eager load 'bienThe' để lấy giá hiển thị
-    //     $products = SanPham::with('bienThe')->orderBy('created_at', 'desc')->paginate(10);
-
-    //     return view('admin.products', compact('products'));
-    // }
-    public function products()
+    public function products(Request $request)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        // FIX LỖI: Dùng 'bienTheSanPham' thay vì 'bienThe'
-        $products = SanPham::with('bienTheSanPham')->orderBy('created_at', 'desc')->paginate(10);
+        $query = SanPham::with('thuongHieu')->select('san_pham.*');
+        
+        $keyword = $request->input('keyword');
+        if ($keyword) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('ten', 'like', "%{$keyword}%")
+                  ->orWhereHas('bienTheSanPham', function ($q2) use ($keyword) {
+                      $q2->where('sku', 'like', "%{$keyword}%");
+                  });
+            });
+        }
 
-        return view('admin.products', compact('products'));
+        $brandId = $request->input('thuong_hieu_id');
+        if ($brandId) {
+            $query->where('thuong_hieu_id', $brandId);
+        }
+        
+        $hienThi = $request->input('hien_thi');
+        if (in_array($hienThi, ['1', '0'])) {
+            $query->where('hien_thi', (int)$hienThi);
+        }
+
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        if ($sortBy == 'gia' || $sortBy == 'ton_kho') {
+            $query->join('bien_the_san_pham', 'san_pham.id', '=', 'bien_the_san_pham.san_pham_id')
+                  ->whereNull('bien_the_san_pham.deleted_at')
+                  ->where(function($q) {
+                      $q->whereRaw('bien_the_san_pham.id = (SELECT MIN(id) FROM bien_the_san_pham WHERE san_pham_id = san_pham.id)');
+                  })
+                  ->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+        
+        if ($sortBy == 'gia' || $sortBy == 'ton_kho') {
+            $products = $query->distinct()->with('bienTheSanPham')->paginate(10);
+        } else {
+            $products = $query->with('bienTheSanPham')->paginate(10);
+        }
+        
+        $thuongHieu = ThuongHieu::all();
+        $products->appends($request->all());
+
+        return view('admin.products', compact(
+            'products', 
+            'thuongHieu',
+            'keyword',
+            'brandId',
+            'hienThi',
+            'sortBy',
+            'sortOrder'
+        ));
     }
 
     /**
@@ -438,18 +395,6 @@ class AdminController extends Controller
     /**
      * 4. Form sửa sản phẩm
      */
-    // public function editProduct($id)
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-    //     $product = SanPham::with('bienThe')->findOrFail($id);
-    //     $thuongHieu = ThuongHieu::all();
-        
-    //     // Lấy biến thể đầu tiên để hiển thị thông tin giá/sku
-    //     $firstVariant = $product->bienThe->first();
-
-    //     return view('admin.products.edit', compact('product', 'thuongHieu', 'firstVariant'));
-    // }
     public function editProduct($id)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
@@ -473,7 +418,7 @@ class AdminController extends Controller
         $product = SanPham::findOrFail($id);
         
         // Lấy biến thể chính cần sửa
-        $variant = $product->bienThe()->first(); 
+        $variant = $product->bienTheSanPham()->first(); 
         $variantId = $variant ? $variant->id : null;
 
         $request->validate([
@@ -544,36 +489,35 @@ class AdminController extends Controller
             
             return redirect()->route('admin.products')->with('success', 'Đã xóa sản phẩm!');
         } catch (\Exception $e) {
-            return back()->with('error', 'Xóa thất bại: ' . $e->getMessage());
+            return back()->with('error', 'Lỗi: ' . $e->getMessage());
         }
     }
 
 
     
-    // public function categories()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) {
-    //         return $redirect;
-    //     }
-
-    //     return view('admin.categories');
-    // }
-
-    // =========================================================================
-    // QUẢN LÝ DANH MỤC (CATEGORIES)
-    // =========================================================================
-    // public function categories()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-    //     $categories = DanhMuc::with('danhMucCha')->orderBy('created_at', 'desc')->paginate(10);
-    //     return view('admin.categories.index', compact('categories'));
-    // }
-    public function categories()
+    // QUẢN LÝ DANH MỤC
+    public function categories(Request $request)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-        // FIX LỖI: Thay thế 'danhMucCha' bằng 'parent'
-        $categories = DanhMuc::with('parent')->orderBy('created_at', 'desc')->paginate(10);
-        return view('admin.categories.index', compact('categories'));
+        
+        $query = DanhMuc::with('parent')->whereNull('deleted_at');
+        
+        $keyword = $request->input('keyword');
+        if ($keyword) {
+            $query->where('ten', 'like', "%{$keyword}%");
+        }
+        
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+        
+        if (!in_array($sortBy, ['id', 'ten', 'slug', 'created_at'])) {
+            $sortBy = 'created_at';
+        }
+
+        $categories = $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        $categories->appends($request->all());
+
+        return view('admin.categories.index', compact('categories', 'sortBy', 'sortOrder', 'keyword'));
     }
 
     public function createCategory()
@@ -646,59 +590,159 @@ class AdminController extends Controller
     }
 
 
-
-
-    public function orders()
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) {
-            return $redirect;
-        }
-
-        $orders = DonHang::orderBy('ngay_dat', 'desc')->paginate(10);
-
-        return view('admin.orders', compact('orders'));
-    }
-
-
-    // khuyễn mãi promotion
-    // public function promotions()
-    // {
-    //     if ($redirect = $this->ensureAdminOrStaff()) {
-    //         return $redirect;
-    //     }
-
-    //     return view('admin.promotions');
-    // }
-    protected function getSimulatedPromotions() {
-        // Dữ liệu mẫu (sử dụng Carbon cho ngày tháng)
-        return collect([
-            (object)['id' => 1, 'name' => 'Ưu đãi Black Friday', 'code' => 'BFCM2025', 'discount' => '10% (Max 500k)', 'start_date' => '2025-11-01', 'end_date' => '2025-11-30', 'status' => 'Đã kết thúc'],
-            (object)['id' => 2, 'name' => 'Chào mừng năm mới', 'code' => 'TET2026', 'discount' => '500.000₫', 'start_date' => '2026-01-01', 'end_date' => '2026-02-15', 'status' => 'Đang diễn ra'],
-            (object)['id' => 3, 'name' => 'Giảm giá chào hè', 'code' => 'HE2026', 'discount' => '20%', 'start_date' => '2026-06-01', 'end_date' => '2026-08-31', 'status' => 'Chưa bắt đầu'],
-        ]);
-    }
-    public function createPromotion()
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-        return view('admin.promotions.create');
-    }
-
-    public function promotions()
+    // QUẢN LÝ ĐƠN HÀNG
+    public function orders(Request $request)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
         
-        $promotions = $this->getSimulatedPromotions();
+        $query = DonHang::with('nguoiDung')->whereNull('deleted_at');
 
-        return view('admin.promotions', compact('promotions'));
+        $trangThai = $request->input('trang_thai');
+        if ($trangThai) {
+            $query->where('trang_thai', $trangThai);
+        }
+
+        $keyword = $request->input('keyword');
+        if ($keyword) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('ma', 'like', "%{$keyword}%")
+                  ->orWhere('ten_nguoi_nhan', 'like', "%{$keyword}%");
+            });
+        }
+        
+        $sortBy = $request->input('sort_by', 'ngay_dat');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        if (!in_array($sortBy, ['ma', 'tong_tien', 'trang_thai', 'ngay_dat'])) {
+            $sortBy = 'ngay_dat';
+        }
+        
+        $orders = $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        $orders->appends($request->all());
+
+        return view('admin.orders', compact('orders', 'trangThai', 'sortBy', 'sortOrder', 'keyword'));
     }
-    // =========================================================================
-    // QUẢN LÝ THƯƠNG HIỆU (BRANDS)
-    // =========================================================================
-    public function brands()
+
+    public function editOrder($id)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-        $brands = ThuongHieu::orderBy('created_at', 'desc')->paginate(10);
-        return view('admin.brands.index', compact('brands'));
+        
+        $order = DonHang::with(['chiTiet.bienThe.sanPham', 'nguoiDung'])
+            ->whereNull('deleted_at')
+            ->findOrFail($id);
+            
+        // Trả về view để Admin xem chi tiết và chỉnh sửa
+        return view('admin.orders.edit', compact('order'));
+    }
+
+    // 2. XỬ LÝ CẬP NHẬT (UPDATE)
+    public function updateOrder(Request $request, $id)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        $order = DonHang::whereNull('deleted_at')->findOrFail($id);
+
+        $request->validate([
+            'trang_thai' => 'required|in:DANG_XU_LY,DANG_GIAO,HOAN_THANH,HUY',
+            'trang_thai_tt' => 'required|in:CHUA_TT,DA_TT',
+            'ten_nguoi_nhan' => 'required|string|max:191',
+            'sdt_nguoi_nhan' => 'required|string|max:32',
+            'dia_chi_giao' => 'required|string',
+            'ghi_chu' => 'nullable|string|max:500',
+        ]);
+        
+        DB::beginTransaction();
+        try {
+            $oldStatus = $order->trang_thai;
+
+            $order->trang_thai = $request->trang_thai;
+            $order->trang_thai_tt = $request->trang_thai_tt;
+            $order->ten_nguoi_nhan = $request->ten_nguoi_nhan;
+            $order->sdt_nguoi_nhan = $request->sdt_nguoi_nhan;
+            $order->dia_chi_giao = $request->dia_chi_giao;
+            $order->ghi_chu = $request->ghi_chu;
+            $order->updated_at = now();
+            
+            // Logic hoàn trả tồn kho nếu chuyển sang HUY
+            if ($oldStatus != 'HUY' && $request->trang_thai == 'HUY') {
+                 // Hoàn lại tồn kho
+                foreach ($order->chiTiet as $item) {
+                    if ($item->bienThe) {
+                        $item->bienThe->ton_kho = $item->bienThe->ton_kho + $item->so_luong;
+                        $item->bienThe->save();
+                    }
+                }
+            }
+            
+            $order->save();
+            DB::commit();
+
+            return redirect()->route('admin.orders')->with('success', 'Cập nhật đơn hàng #' . $order->ma . ' thành công!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Lỗi cập nhật: ' . $e->getMessage());
+        }
+    }
+
+    // 3. XÓA (DELETE) - Soft delete
+    public function deleteOrder($id)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        DB::beginTransaction();
+        try {
+            $order = DonHang::whereNull('deleted_at')->findOrFail($id);
+            $orderCode = $order->ma;
+
+            // Xử lý hoàn kho và chuyển trạng thái trước khi soft delete
+            if ($order->trang_thai != 'HUY') {
+                $order->trang_thai = 'HUY';
+                 // Hoàn lại tồn kho
+                foreach ($order->chiTiet as $item) {
+                    if ($item->bienThe) {
+                        $item->bienThe->ton_kho = $item->bienThe->ton_kho + $item->so_luong;
+                        $item->bienThe->save();
+                    }
+                }
+                $order->save();
+            }
+            
+            $order->delete(); // Soft delete
+            
+            DB::commit();
+
+            return redirect()->route('admin.orders')->with('success', 'Đã xóa (soft delete) đơn hàng #' . $orderCode);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Lỗi xóa đơn hàng: ' . $e->getMessage());
+        }
+    }
+    
+    // QUẢN LÝ THƯƠNG HIỆU
+    public function brands(Request $request)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        $query = ThuongHieu::whereNull('deleted_at');
+        
+        $keyword = $request->input('keyword');
+        if ($keyword) {
+            $query->where('ten', 'like', "%{$keyword}%");
+        }
+        
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+        
+        if (!in_array($sortBy, ['id', 'ten', 'slug', 'created_at'])) {
+            $sortBy = 'created_at';
+        }
+        
+        $brands = $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        $brands->appends($request->all());
+
+        return view('admin.brands.index', compact('brands', 'sortBy', 'sortOrder', 'keyword'));
     }
 
     public function createBrand()
@@ -767,15 +811,6 @@ class AdminController extends Controller
         return view('admin.reviews');
     }
 
-    public function reports()
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) {
-            return $redirect;
-        }
-
-        return view('admin.reports');
-    }
-
     public function backup()
     {
         if ($redirect = $this->ensureAdminOrStaff()) {
@@ -839,4 +874,213 @@ class AdminController extends Controller
         return back()->with('success', 'Đã cập nhật hồ sơ thành công!');
     }
     
+    // QUẢN LÝ KHUYẾN MÃI (REAL DB)
+    public function promotions(Request $request)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        $query = KhuyenMai::query();
+        
+        // --- 1. Tìm kiếm (theo Tên và Mã) ---
+        $keyword = $request->input('keyword');
+        if ($keyword) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('ten', 'like', "%{$keyword}%")
+                  ->orWhere('ma', 'like', "%{$keyword}%");
+            });
+        }
+
+        // --- 2. Sắp xếp ---
+        $sortBy = $request->input('sort_by', 'ngay_bat_dau'); 
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        if (!in_array($sortBy, ['ten', 'ma', 'ngay_bat_dau'])) {
+            $sortBy = 'ngay_bat_dau';
+        }
+        
+        $promotions = $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        $promotions->appends($request->all());
+
+        return view('admin.promotions', compact('promotions', 'keyword', 'sortBy', 'sortOrder'));
+    }
+
+    public function createPromotion()
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        return view('admin.promotions.create');
+    }
+
+    public function storePromotion(Request $request)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+        $request->validate([
+            'name' => 'required|max:191',
+            'code' => 'required|unique:khuyen_mai,ma', // Kiểm tra mã duy nhất
+            'discount_value' => 'required',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+        
+        try {
+            KhuyenMai::create([
+                'ten' => $request->name,
+                'ma' => $request->code,
+                'gia_tri' => $request->discount_value,
+                'ngay_bat_dau' => $request->start_date,
+                'ngay_ket_thuc' => $request->end_date,
+            ]);
+
+            return redirect()->route('admin.promotions')->with('success', 'Tạo khuyến mãi thành công!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Lỗi DB: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function editPromotion($id)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        $promo = KhuyenMai::findOrFail($id);
+        
+        return view('admin.promotions.edit', compact('promo'));
+    }
+
+    public function updatePromotion(Request $request, $id)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+        $request->validate([
+            'name' => 'required|max:191',
+            'discount_value' => 'required',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        try {
+            $promo = KhuyenMai::findOrFail($id);
+            
+            $promo->update([
+                'ten' => $request->name,
+                'gia_tri' => $request->discount_value,
+                'ngay_bat_dau' => $request->start_date,
+                'ngay_ket_thuc' => $request->end_date,
+            ]);
+
+            return redirect()->route('admin.promotions')->with('success', 'Cập nhật khuyến mãi thành công!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Lỗi DB: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function deletePromotion($id)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        
+        try {
+            KhuyenMai::findOrFail($id)->delete();
+            return redirect()->route('admin.promotions')->with('success', 'Đã xóa khuyến mãi!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Lỗi xóa: ' . $e->getMessage());
+        }
+    }
+    
+    // BÁO CÁO TỔNG HỢP (ĐÃ CẬP NHẬT)
+    public function reports(Request $request)
+    {
+        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+        $currentDate = Carbon::now();
+        $queryStart = null;
+        $queryEnd = null;
+        $selectedQuick = null;
+
+        // --- 1. Xử lý Lọc theo Ngày/Tháng/Năm (Tương tự Dashboard) ---
+        if ($request->has('quick_select') && $request->quick_select != '') {
+            $selectedQuick = $request->quick_select;
+            switch ($selectedQuick) {
+                case 'today':
+                    $queryStart = $currentDate->copy()->startOfDay();
+                    $queryEnd = $currentDate->copy()->endOfDay();
+                    break;
+                case 'this_month':
+                    $queryStart = $currentDate->copy()->startOfMonth();
+                    $queryEnd = $currentDate->copy()->endOfDay();
+                    break;
+                case 'this_year':
+                    $queryStart = $currentDate->copy()->startOfYear();
+                    $queryEnd = $currentDate->copy()->endOfDay();
+                    break;
+                case 'custom':
+                    if ($request->has('start_date') && $request->has('end_date') && $request->start_date && $request->end_date) {
+                        $queryStart = Carbon::parse($request->start_date)->startOfDay();
+                        $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+                    }
+                    break;
+            }
+        } 
+        
+        if (is_null($queryStart) || is_null($queryEnd)) {
+            $queryStart = $currentDate->copy()->startOfMonth();
+            $queryEnd = $currentDate->copy()->endOfDay();
+            $selectedQuick = $selectedQuick ?? 'this_month';
+        }
+
+        // --- 2. Tính toán thống kê ---
+        
+        // Doanh thu và Đơn hàng
+        $tongDoanhThu = DonHang::where('trang_thai', 'HOAN_THANH')
+            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+            ->sum('thanh_tien');
+
+        $tongDonHang = DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
+        
+        // Khách hàng mới (Vai trò KHACH_HANG)
+        $khachHangMoi = User::where('vai_tro', 'KHACH_HANG')
+            ->whereBetween('created_at', [$queryStart, $queryEnd])
+            ->count();
+
+        // Đánh giá trung bình (FIXED: DanhGia::query())
+        $avgRating = DanhGia::query()->where('duyet', 1)->avg('so_sao') ?? 0;
+        
+        // Top Sản phẩm bán chạy nhất (ĐÃ SỬA LỖI AMBIGUOUS)
+        $topSellingProducts = \App\Models\DonHangChiTiet::select('san_pham_id', DB::raw('SUM(so_luong) as tong_so_luong_ban'), DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu'))
+            ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+            ->where('don_hang.trang_thai', 'HOAN_THANH')
+            ->whereBetween('don_hang.ngay_dat', [$queryStart, $queryEnd])
+            ->groupBy('san_pham_id')
+            ->orderBy('tong_so_luong_ban', 'desc')
+            ->with('sanPham') 
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                $item->ten = $item->sanPham->ten ?? 'Sản phẩm đã xóa';
+                return $item;
+            });
+
+        // Đơn hàng gần đây
+        $recentOrders = DonHang::with('nguoiDung')
+            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+            ->orderBy('ngay_dat', 'desc')
+            ->limit(5)
+            ->get();
+        
+        // Truyền các biến ngày tháng
+        $queryStartFormatted = $queryStart->format('Y-m-d');
+        $queryEndFormatted = $queryEnd->format('Y-m-d');
+
+        return view('admin.reports', compact(
+            'tongDoanhThu',
+            'tongDonHang',
+            'khachHangMoi',
+            'avgRating',
+            'topSellingProducts',
+            'recentOrders',
+            'selectedQuick', 
+            'queryStartFormatted', 
+            'queryEndFormatted'
+        ));
+    }
+    
+    // ... (các hàm CRUD systems giữ nguyên)
 }
