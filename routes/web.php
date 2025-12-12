@@ -118,7 +118,13 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
 
     Route::get('/customers', [StaffController::class, 'customers'])->name('customers');
     Route::get('/support', [StaffController::class, 'support'])->name('support');
+
     Route::get('/reports', [StaffController::class, 'reports'])->name('reports');
+    Route::get('/reports/export', [StaffController::class, 'exportReport'])->name('reports.export');
+
+    // BỔ SUNG: THÔNG TIN CÁ NHÂN NHÂN VIÊN
+    Route::get('/profile', [StaffController::class, 'profile'])->name('profile');
+    Route::put('/profile', [StaffController::class, 'updateProfile'])->name('profile.update');
 
     // QUẢN LÝ TIN CÔNG NGHỆ (MỚI)
     Route::get('/news', [StaffController::class, 'news'])->name('news');
@@ -233,7 +239,8 @@ Route::get('/chinh-sach-doi-tra', fn() => view('pages.return'))->name('return');
 Route::get('/huong-dan-mua-hang', fn() => view('pages.guide'))->name('guide');
 Route::get('/chinh-sach-bao-mat', fn() => view('pages.privacy'))->name('privacy');
 Route::get('/dieu-khoan-su-dung', fn() => view('pages.terms'))->name('terms');
-Route::get('/khuyen-mai', fn() => view('pages.promotions'))->name('promotions');
+// Route::get('/khuyen-mai', fn() => view('pages.promotions'))->name('promotions');
+Route::get('/khuyen-mai', [HomeController::class, 'promotions'])->name('promotions');
 
 // ==================== TIN TỨC CÔNG NGHỆ ====================
 Route::prefix('tin-tuc')->name('news.')->group(function () {

@@ -24,39 +24,58 @@
                 <div class="filter-box">
                     <h3><i class="fas fa-filter"></i> Lọc sản phẩm</h3>
                     
-                    {{-- Lọc theo Danh mục --}}
-                    <div class="filter-group">
-                        <h4>Danh mục</h4>
-                        @foreach($categories as $cat)
-                            <label>
-                                <input type="radio" name="category" value="{{ $cat->slug }}" 
-                                       onclick="window.location.href='{{ route('products.category', $cat->slug) }}'"
-                                       {{ $cat->id == $category->id ? 'checked' : '' }}> 
-                                {{ $cat->ten }}
-                            </label>
-                        @endforeach
-                    </div>
+                    {{-- FIX: BAO BỌC BỘ LỌC BẰNG FORM GỬI ĐẾN ROUTE CATEGORY HIỆN TẠI --}}
+                    <form action="{{ route('products.category', $category->slug) }}" method="GET" id="mainFilterForm">
+                        
+                        {{-- Hidden Input để giữ lại trạng thái Sắp xếp khi lọc --}}
+                        <input type="hidden" name="sort" value="{{ request('sort', 'newest') }}">
+                        
+                        {{-- Lọc theo Danh mục (Giữ nguyên logic redirect) --}}
+                        <div class="filter-group">
+                            <h4>Danh mục</h4>
+                            @foreach($categories as $cat)
+                                <label>
+                                    <input type="radio" name="category_redirect" value="{{ $cat->slug }}" 
+                                           onclick="window.location.href='{{ route('products.category', $cat->slug) }}'"
+                                           {{ $cat->id == $category->id ? 'checked' : '' }}> 
+                                    {{ $cat->ten }}
+                                </label>
+                            @endforeach
+                        </div>
 
-                    {{-- Lọc theo Thương hiệu --}}
-                    <div class="filter-group">
-                        <h4>Thương hiệu</h4>
-                        @foreach($brands as $brand)
-                            <label>
-                                <input type="checkbox" name="brand[]" value="{{ $brand->slug }}"> 
-                                {{ $brand->ten }}
-                            </label>
-                        @endforeach
-                    </div>
-                    
-                    {{-- Lọc theo Giá --}}
-                    <div class="filter-group">
-                        <h4>Khoảng giá</h4>
-                        <label><input type="radio" name="price" value="0-5000000"> Dưới 5 triệu</label>
-                        <label><input type="radio" name="price" value="5000000-10000000"> 5 - 10 triệu</label>
-                        <label><input type="radio" name="price" value="10000000-20000000"> 10 - 20 triệu</label>
-                        <label><input type="radio" name="price" value="20000000-100000000"> Trên 20 triệu</label>
-                        <button class="btn btn-primary btn-sm mt-2" style="width:100%">Áp dụng bộ lọc</button>
-                    </div>
+                        {{-- Lọc theo Thương hiệu (Sử dụng checkbox) --}}
+                        <div class="filter-group">
+                            <h4>Thương hiệu</h4>
+                            @php $selectedBrands = (array) request('brand', []); @endphp
+                            @foreach($brands as $brand)
+                                <label>
+                                    <input type="checkbox" name="brand[]" value="{{ $brand->slug }}" 
+                                           {{ in_array($brand->slug, $selectedBrands) ? 'checked' : '' }}> 
+                                    {{ $brand->ten }}
+                                </label>
+                            @endforeach
+                        </div>
+                        
+                        {{-- Lọc theo Giá (Sử dụng radio) --}}
+                        <div class="filter-group">
+                            <h4>Khoảng giá</h4>
+                            <label><input type="radio" name="price" value="0-5000000" {{ request('price') == '0-5000000' ? 'checked' : '' }}> Dưới 5 triệu</label>
+                            <label><input type="radio" name="price" value="5000000-10000000" {{ request('price') == '5000000-10000000' ? 'checked' : '' }}> 5 - 10 triệu</label>
+                            <label><input type="radio" name="price" value="10000000-20000000" {{ request('price') == '10000000-20000000' ? 'checked' : '' }}> 10 - 20 triệu</label>
+                            <label><input type="radio" name="price" value="20000000-100000000" {{ request('price') == '20000000-100000000' ? 'checked' : '' }}> Trên 20 triệu</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm mt-2" style="width:100%">
+                            <i class="fas fa-filter"></i> Áp dụng bộ lọc
+                        </button>
+                        
+                        @if(!empty($selectedBrands) || request('price'))
+                            <a href="{{ route('products.category', $category->slug) }}" class="btn btn-secondary btn-sm mt-2" style="width:100%">
+                                Hủy lọc
+                            </a>
+                        @endif
+                    </form>
+                    {{-- END FORM --}}
                 </div>
             </aside>
 
@@ -66,10 +85,12 @@
                     <div class="result-count">Hiển thị {{ $products->firstItem() }} - {{ $products->lastItem() }} trong tổng số {{ $products->total() }} sản phẩm</div>
                     <div class="toolbar-right">
                         <span>Sắp xếp theo:</span>
-                        <select class="sort-select">
-                            <option>Mới nhất</option>
-                            <option>Giá thấp nhất</option>
-                            <option>Giá cao nhất</option>
+                        {{-- FIX: Sửa onchange để giữ lại các tham số lọc hiện có --}}
+                        <select class="sort-select" onchange="window.location.href = updateQueryString(this.value)">
+                            <option value="newest" {{ request('sort', 'newest') == 'newest' ? 'selected' : '' }}>Mới nhất</option>
+                            <option value="price_asc" {{ request('sort') == 'price_asc' ? 'selected' : '' }}>Giá thấp nhất</option>
+                            <option value="price_desc" {{ request('sort') == 'price_desc' ? 'selected' : '' }}>Giá cao nhất</option>
+                            <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Phổ biến nhất</option>
                         </select>
                     </div>
                 </div>
@@ -82,7 +103,6 @@
                             $comparePrice = $variant ? $variant->gia_so_sanh : 0;
                             $discount = $comparePrice > $minPrice ? round((($comparePrice - $minPrice) / $comparePrice) * 100) : 0;
                             $imagePath = $product->hinh_anh_mac_dinh ? asset('uploads/' . $product->hinh_anh_mac_dinh) : 'https://via.placeholder.com/300';
-                            // Giả định hàm tính rating có sẵn
                             $avgRating = $product->danhGia->avg('so_sao') ?? 0;
                             $reviewCount = $product->danhGia->count();
                         @endphp
@@ -92,10 +112,8 @@
                                 <div class="product-badge">-{{ $discount }}%</div>
                             @endif
                             
-                            {{-- FIX 1: Wrap image in the link (products.show) và xóa quick-view --}}
                             <a href="{{ route('products.show', $product->slug) }}" class="product-image"> 
                                 <img src="{{ $imagePath }}" alt="{{ $product->ten }}">
-                                {{-- Loại bỏ <a href="{{ route('products.show', $product->slug) }}" class="quick-view"><i class="fas fa-eye"></i></a> --}}
                             </a>
                             
                             <div class="product-info">
@@ -131,8 +149,8 @@
                     @endforelse
                 </div>
                 
-                {{-- Pagination --}}
-                <div class="pagination-wrapper">{{ $products->links() }}</div>
+                {{-- Pagination (Giữ lại các tham số lọc) --}}
+                <div class="pagination-wrapper">{{ $products->appends(request()->except('page'))->links() }}</div>
             </div>
             
         </div>
@@ -153,6 +171,26 @@
         });
     }
 
+    // Hàm Helper để giữ lại các tham số lọc khi thay đổi Sort
+    function updateQueryString(sortValue) {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        
+        // Xóa tham số sắp xếp cũ nếu tồn tại
+        params.delete('sort');
+        
+        // Thêm tham số sắp xếp mới
+        if (sortValue !== 'newest') {
+            params.set('sort', sortValue);
+        }
+        
+        // Xóa tham số phân trang
+        params.delete('page'); 
+
+        return url.pathname + url.search;
+    }
+    
+    // Logic Add to Cart (Giữ nguyên)
     document.querySelectorAll('.add-to-cart-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();

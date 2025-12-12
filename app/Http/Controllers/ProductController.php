@@ -9,6 +9,9 @@ use App\Models\BienTheSanPham;
 use App\Models\DanhGia;
 use Illuminate\Http\Request;
 
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+
 class ProductController extends Controller
 {
     /**
@@ -208,24 +211,88 @@ class ProductController extends Controller
     /**
      * Hiển thị sản phẩm theo danh mục
      */
-    public function category($slug)
+    // public function category($slug)
+    // {
+    //     $category = DanhMuc::where('slug', $slug)->firstOrFail();
+        
+    //     $products = SanPham::with(['thuongHieu', 'bienTheSanPham' => function($q) {
+    //             $q->where('dang_ban', 1)->orderBy('gia', 'asc');
+    //         }])
+    //         ->whereNull('deleted_at')
+    //         ->where('hien_thi', 1) 
+    //         ->whereHas('danhMuc', function($q) use ($category) {
+    //             $q->where('danh_muc.id', $category->id);
+    //         })
+    //         ->orderBy('created_at', 'desc')
+    //         ->paginate(12);
+        
+    //     $categories = DanhMuc::whereNull('deleted_at')->get();
+    //     $brands = ThuongHieu::whereNull('deleted_at')->get();
+        
+    //     return view('products.category', compact('products', 'category', 'categories', 'brands'));
+    // }
+    public function category(Request $request, $slug)
     {
         $category = DanhMuc::where('slug', $slug)->firstOrFail();
         
-        $products = SanPham::with(['thuongHieu', 'bienTheSanPham' => function($q) {
+        $query = SanPham::with(['thuongHieu', 'bienTheSanPham' => function($q) {
                 $q->where('dang_ban', 1)->orderBy('gia', 'asc');
             }])
             ->whereNull('deleted_at')
             ->where('hien_thi', 1) 
             ->whereHas('danhMuc', function($q) use ($category) {
                 $q->where('danh_muc.id', $category->id);
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(12);
+            });
+            
+        // <<< LOGIC LỌC >>>
+        
+        // Lọc theo thương hiệu (brand)
+        if ($request->has('brand') && $request->brand != '') {
+            $brandSlugs = is_array($request->brand) ? $request->brand : [$request->brand];
+            $query->whereHas('thuongHieu', function($q) use ($brandSlugs) {
+                $q->whereIn('slug', $brandSlugs);
+            });
+        }
+        
+        // Lọc theo giá (price)
+        if ($request->has('price') && $request->price != '') {
+            $priceRange = explode('-', $request->price);
+            if (count($priceRange) == 2) {
+                $query->whereHas('bienTheSanPham', function($q) use ($priceRange) {
+                    $q->whereBetween('gia', [(int)$priceRange[0], (int)$priceRange[1]]);
+                });
+            }
+        }
+        
+        // Sắp xếp
+        // Bạn cần đảm bảo hàm applyPriceSorting hoặc logic sắp xếp của bạn được gọi ở đây.
+        // Nếu không có hàm applyPriceSorting, bạn có thể sử dụng logic đã được fix ở các câu trả lời trước.
+        
+        // --- Sử dụng Logic Sắp xếp Mặc định ---
+        $sortBy = $request->input('sort', 'newest');
+        if ($sortBy == 'price_asc' || $sortBy == 'price_desc') {
+             // Logic GROUP BY MIN/MAX (Chống lỗi DISTINCT)
+             $query->leftJoin('bien_the_san_pham as bsp_sort', function($join) {
+                     $join->on('san_pham.id', '=', 'bsp_sort.san_pham_id')
+                          ->where('bsp_sort.dang_ban', '=', 1)
+                          ->whereNull('bsp_sort.deleted_at');
+                 })
+                 ->groupBy('san_pham.id') 
+                 ->orderByRaw(($sortBy == 'price_asc' ? 'MIN' : 'MAX') . '(bsp_sort.gia) ' . ($sortBy == 'price_asc' ? 'ASC' : 'DESC')) 
+                 ->select('san_pham.*');
+        } else {
+             $query->orderBy('created_at', 'desc');
+        }
+        // --- Kết thúc Logic Sắp xếp Mặc định ---
+
+        // <<< KẾT THÚC LOGIC LỌC >>>
+        
+        $products = $query->paginate(12);
         
         $categories = DanhMuc::whereNull('deleted_at')->get();
         $brands = ThuongHieu::whereNull('deleted_at')->get();
         
+        // Truyền các tham số request hiện tại để giữ lại trạng thái lọc trên view
         return view('products.category', compact('products', 'category', 'categories', 'brands'));
     }
     
@@ -348,5 +415,134 @@ class ProductController extends Controller
         $brands = \App\Models\ThuongHieu::whereNull('deleted_at')->get();
         
         return view('products.featured', compact('products', 'categories', 'brands', 'sortBy'));
+    }
+
+    public function storeVariant(Request $request, SanPham $sanPham)
+    {
+        // 1. Validation dữ liệu đầu vào
+        $validator = Validator::make($request->all(), [
+            'mau_sac' => 'required|string|max:50',
+            'dung_luong' => 'required|string|max:50',
+            // Giá phải là số và không âm
+            'gia' => 'required|numeric|min:0', 
+            // Số lượng phải là số nguyên và không âm
+            'so_luong_ton' => 'required|integer|min:0', 
+            // SKU phải là duy nhất
+            'sku' => 'nullable|string|max:100|unique:bien_the_san_pham,sku', 
+            'trang_thai' => 'required|boolean',
+        ], [
+            'mau_sac.required' => 'Màu sắc không được để trống.',
+            'dung_luong.required' => 'Dung lượng không được để trống.',
+            'gia.required' => 'Giá bán không được để trống.',
+            'gia.numeric' => 'Giá bán phải là một số.',
+            'so_luong_ton.required' => 'Số lượng tồn không được để trống.',
+            'so_luong_ton.integer' => 'Số lượng tồn phải là số nguyên.',
+            'sku.unique' => 'Mã SKU này đã tồn tại.',
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput()
+                ->with('error', 'Thêm biến thể thất bại. Vui lòng kiểm tra lại dữ liệu.');
+        }
+        
+        try {
+            // 2. Tạo biến thể sản phẩm mới
+            BienTheSanPham::create([
+                'san_pham_id' => $sanPham->id, // Lấy ID từ Route Model Binding
+                'mau_sac' => $request->mau_sac,
+                'dung_luong' => $request->dung_luong,
+                'gia' => $request->gia,
+                'so_luong_ton' => $request->so_luong_ton,
+                'sku' => $request->sku,
+                'trang_thai' => $request->trang_thai,
+            ]);
+
+            return back()->with('success', 'Đã thêm biến thể sản phẩm thành công!');
+
+        } catch (\Exception $e) {
+            // Trường hợp lỗi khác (ví dụ: lỗi CSDL)
+            return back()->withInput()->with('error', 'Lỗi hệ thống khi thêm biến thể. Chi tiết: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Phương thức xử lý cập nhật biến thể sản phẩm (Sửa - PUT/PATCH)
+     * $bienThe: Đối tượng BienTheSanPham được tự động load nhờ Route Model Binding.
+     */
+    public function updateVariant(Request $request, SanPham $sanPham, BienTheSanPham $bienThe)
+    {
+        // Tùy chọn: Đảm bảo biến thể thực sự thuộc về sản phẩm này (an toàn hơn)
+        if ($bienThe->san_pham_id !== $sanPham->id) {
+            return back()->with('error', 'Biến thể không thuộc về sản phẩm này.');
+        }
+        
+        // 1. Validation dữ liệu đầu vào
+        $validator = Validator::make($request->all(), [
+            'mau_sac' => 'required|string|max:50',
+            'dung_luong' => 'required|string|max:50',
+            'gia' => 'required|numeric|min:0',
+            'so_luong_ton' => 'required|integer|min:0',
+            // Rule::unique cho phép bỏ qua chính record hiện tại khi kiểm tra SKU duy nhất
+            'sku' => [
+                'nullable', 
+                'string', 
+                'max:100', 
+                Rule::unique('bien_the_san_pham', 'sku')->ignore($bienThe->id)
+            ],
+            'trang_thai' => 'required|boolean',
+        ], [
+            'sku.unique' => 'Mã SKU này đã tồn tại trong hệ thống.',
+            // ... thêm các thông báo lỗi khác nếu cần
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput()
+                ->with('error', 'Cập nhật biến thể thất bại. Vui lòng kiểm tra lại dữ liệu.');
+        }
+
+        try {
+            // 2. Cập nhật biến thể
+            $bienThe->update([
+                'mau_sac' => $request->mau_sac,
+                'dung_luong' => $request->dung_luong,
+                'gia' => $request->gia,
+                'so_luong_ton' => $request->so_luong_ton,
+                'sku' => $request->sku,
+                'trang_thai' => $request->trang_thai,
+            ]);
+
+            return back()->with('success', 'Đã cập nhật biến thể sản phẩm thành công!');
+
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', 'Lỗi hệ thống khi cập nhật biến thể: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * Phương thức xử lý xóa biến thể sản phẩm (DELETE)
+     * $bienThe: Đối tượng BienTheSanPham được tự động load nhờ Route Model Binding.
+     */
+    public function destroyVariant(SanPham $sanPham, BienTheSanPham $bienThe)
+    {
+        // Tùy chọn: Đảm bảo biến thể thực sự thuộc về sản phẩm này (an toàn hơn)
+        if ($bienThe->san_pham_id !== $sanPham->id) {
+            return back()->with('error', 'Biến thể không thuộc về sản phẩm này.');
+        }
+        
+        try {
+            // 1. Xóa biến thể
+            $bienThe->delete();
+
+            return back()->with('success', 'Đã xóa biến thể sản phẩm thành công!');
+
+        } catch (\Exception $e) {
+            // Trường hợp lỗi CSDL (ví dụ: đang có đơn hàng tham chiếu đến biến thể này)
+            return back()->with('error', 'Lỗi hệ thống khi xóa biến thể: ' . $e->getMessage());
+        }
     }
 }

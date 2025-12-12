@@ -48,6 +48,23 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>Danh mục (Chọn nhiều)</label>
+                        <select name="danh_muc_ids[]" class="form-control" multiple required style="width: 100%; padding: 8px; height: 150px;">
+                            @php
+                                $currentCategoryIds = $product->danhMuc->pluck('id')->toArray();
+                            @endphp
+                            @foreach($danhMuc as $dm)
+                                @php
+                                    $isSelected = in_array($dm->id, old('danh_muc_ids', $currentCategoryIds));
+                                @endphp
+                                <option value="{{ $dm->id }}" {{ $isSelected ? 'selected' : '' }}>
+                                    {{ $dm->ten }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Giữ Ctrl hoặc Command để chọn nhiều.</small>
+                    </div>
 
                     <div class="form-group" style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9;">
                         <strong>Biến thể chính</strong>

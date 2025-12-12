@@ -10,7 +10,8 @@ class ThuongHieu extends Model
     use SoftDeletes;
     protected $table = 'thuong_hieu';
     
-    protected $fillable = ['ten', 'slug'];
+    protected $fillable = ['ten', 'slug' ,
+        'hinh_anh'];
     
     public function sanPham()
     {

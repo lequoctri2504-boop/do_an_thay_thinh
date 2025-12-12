@@ -53,6 +53,17 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>Danh mục (Chọn nhiều)</label>
+                        <select name="danh_muc_ids[]" class="form-control" multiple required style="width: 100%; padding: 8px; height: 150px;">
+                            @foreach($danhMuc as $dm)
+                                <option value="{{ $dm->id }}" {{ in_array($dm->id, (array) old('danh_muc_ids')) ? 'selected' : '' }}>
+                                    {{ $dm->ten }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Giữ Ctrl hoặc Command để chọn nhiều.</small>
+                    </div>
 
                     <div class="form-group" style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9;">
                         <strong>Thông tin bán hàng (Mặc định)</strong>

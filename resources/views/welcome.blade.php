@@ -100,25 +100,20 @@
             <h2><i class="fas fa-fire"></i> THƯƠNG HIỆU NỔI BẬT</h2>
         </div>
         <div class="brands-grid">
-            @foreach($brands as $brand)
+            @forelse($brands as $brand)
                 @php
-                    $logo = '';
-                    if ($brand->slug == 'apple') $logo = asset('images/brands/apple.png');
-                    elseif ($brand->slug == 'samsung') $logo = asset('images/brands/samsung.png');
-                    elseif ($brand->slug == 'xiaomi') $logo = asset('images/brands/xiaomi.png');
-                    elseif ($brand->slug == 'oppo') $logo = asset('images/brands/oppo.png');
-                    elseif ($brand->slug == 'vivo') $logo = asset('images/brands/vivo.png');
-                    else $logo = 'https://via.placeholder.com/80x40';
+                    // Sử dụng đường dẫn ảnh động được lưu trong DB (public/images/brands/)
+                    $logoPath = $brand->hinh_anh ? asset('images/brands/' . $brand->hinh_anh) : 'https://via.placeholder.com/80x40?text=LOGO';
                 @endphp
-                <a href="{{ route('products.index', ['brand' => $brand->slug]) }}" class="brand-card">
-                    <img src="{{ $logo }}" alt="{{ $brand->ten }}">
+
+                <a href="{{ route('products.index', ['brand' => $brand->slug]) }}" class="brand-card" title="{{ $brand->ten }}">
+                    <img src="{{ $logoPath }}" alt="{{ $brand->ten }}">
                     <span>{{ $brand->ten }}</span>
                 </a>
-            @endforeach
-            <a href="#" class="brand-card">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Realme_logo.svg" alt="Realme">
-                <span>Realme</span>
-            </a>
+            @empty
+                <p class="text-center" style="grid-column: 1 / -1; padding: 20px;">Chưa có thương hiệu nào được thêm.</p>
+            @endforelse
+            
         </div>
     </div>
 </section>

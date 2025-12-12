@@ -15,8 +15,12 @@ class SanPham extends Model
         'ten',
         'slug',
         'thuong_hieu_id',
-        'mo_ta',
-        'mo_ta_chi_tiet',
+        // 'mo_ta',
+        // 'mo_ta_chi_tiet',
+        'mo_ta_ngan', // Phải có
+        'mo_ta_day_du', // Phải có
+        'hinh_anh_mac_dinh', // Phải có
+        'hien_thi', // Phải có
         'anh_chinh',
         'dang_ban',
         'la_flash_sale',

@@ -27,11 +27,15 @@
                 {{-- Card 1: Thông tin chung --}}
                 <div class="dashboard-card" style="margin-bottom: 20px;">
                     <h3 class="card-header"><i class="fas fa-info-circle"></i> Thông tin sản phẩm</h3>
+                    
+                    {{-- INPUT ẨN CẦN THIẾT CHO VALIDATION --}}
+                    <input type="hidden" name="thuong_hieu_id" value="{{ $product->thuong_hieu_id ?? '' }}">
+
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label>Tên sản phẩm (*)</label>
                         <input type="text" name="ten" class="form-control" value="{{ old('ten', $product->ten) }}" required>
                     </div>
-                    <input type="hidden" name="thuong_hieu_id" value="{{ $product->thuongHieu->id ?? '' }}">
+                    
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label>Mô tả ngắn</label>
                         <textarea name="mo_ta_ngan" class="form-control" rows="3">{{ old('mo_ta_ngan', $product->mo_ta_ngan) }}</textarea>
@@ -40,6 +44,7 @@
                         <label>Mô tả chi tiết</label>
                         <textarea name="mo_ta_day_du" class="form-control" rows="8">{{ old('mo_ta_day_du', $product->mo_ta_day_du) }}</textarea>
                     </div>
+                    
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label>Trạng thái Hiển thị</label>
                         <select name="hien_thi" class="form-control" required>
@@ -48,23 +53,21 @@
                         </select>
                     </div>
                     
-            
-            
-            <hr style="margin: 20px 0;">
+                    <hr style="margin: 20px 0;">
 
-            <div class="form-group row">
-                <label class="col-sm-2 col-form-label">Đánh dấu Đặc biệt</label>
-                <div class="col-sm-10">
-                    <div style="margin-bottom: 10px;">
-                        <input type="checkbox" name="la_flash_sale" value="1" {{ old('la_flash_sale', $product->la_flash_sale) ? 'checked' : '' }}>
-                        <label for="la_flash_sale" style="font-weight: normal;"> Flash Sale (Hiển thị ở mục Flash Sale trên trang chủ)</label>
+                    <div class="form-group row" style="margin: 0;">
+                        <label class="col-sm-3 col-form-label" style="padding-left: 0; padding-right: 0;">Đánh dấu Đặc biệt</label>
+                        <div class="col-sm-9" style="padding-right: 0;">
+                            <div style="margin-bottom: 10px;">
+                                <input type="checkbox" name="la_flash_sale" id="la_flash_sale" value="1" {{ old('la_flash_sale', $product->la_flash_sale) ? 'checked' : '' }}>
+                                <label for="la_flash_sale" style="font-weight: normal;"> Flash Sale</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" name="la_noi_bat" id="la_noi_bat" value="1" {{ old('la_noi_bat', $product->la_noi_bat) ? 'checked' : '' }}>
+                                <label for="la_noi_bat" style="font-weight: normal;"> Sản phẩm Nổi bật</label>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <input type="checkbox" name="la_noi_bat" value="1" {{ old('la_noi_bat', $product->la_noi_bat) ? 'checked' : '' }}>
-                        <label for="la_noi_bat" style="font-weight: normal;"> Sản phẩm Nổi bật (Hiển thị ở mục Sản phẩm nổi bật trên trang chủ)</label>
-                    </div>
-                </div>
-            </div>
                 </div>
 
                 {{-- Card 2: Quản lý Biến thể (Variants) --}}
@@ -90,7 +93,6 @@
                             <tbody id="variants-body">
                                 @php $variantIndex = 0; @endphp
                                 @foreach($product->bienTheSanPham as $variant)
-                                    {{-- FIX: Nội dung hàng biến thể hiện có được nhúng trực tiếp --}}
                                     <tr class="variant-row" id="variant-row-{{ $variant->id }}">
                                         <td>
                                             <input type="text" name="variants[{{ $variantIndex }}][sku]" class="form-control" value="{{ old("variants.{$variantIndex}.sku", $variant->sku) }}" required>
@@ -117,7 +119,7 @@
                         </table>
                     </div>
                     
-                    {{-- Hidden template cho biến thể mới --}}
+                    {{-- TEMPLATE CHO BIẾN THỂ MỚI (Dùng để JS clone) --}}
                     <template id="new-variant-template">
                         <tr class="variant-row">
                             <td><input type="text" name="new_variants[NEW_INDEX][sku]" class="form-control" required></td>
@@ -189,36 +191,56 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Khởi tạo bộ đếm cho biến thể mới, bắt đầu từ số lượng biến thể hiện có
         let variantCounter = {{ $product->bienTheSanPham->count() }}; 
+        const variantsBody = document.getElementById('variants-body');
+        const addButton = document.getElementById('add-variant-btn'); 
 
-        // 1. Quản lý Biến thể (Thêm hàng mới)
-        document.getElementById('add-variant-btn').addEventListener('click', function() {
-            const template = document.getElementById('new-variant-template').content.cloneNode(true);
-            const newRow = template.querySelector('tr');
-            
-            // Thay thế placeholder NEW_INDEX bằng số đếm hiện tại
-            const html = newRow.innerHTML.replace(/NEW_INDEX/g, variantCounter);
-            newRow.innerHTML = html;
-            
-            // Thêm vào bảng
-            document.getElementById('variants-body').appendChild(newRow);
-            
-            // Tăng bộ đếm cho lần thêm tiếp theo
-            variantCounter++;
-        });
-
-        // 2. Quản lý Biến thể (Xóa hàng)
-        document.getElementById('variants-body').addEventListener('click', function(e) {
-            const removeBtn = e.target.closest('.remove-row');
-            if (removeBtn) {
-                if (confirm('Xóa biến thể này? Nếu là biến thể đã tồn tại, nó sẽ bị xóa vĩnh viễn khỏi DB sau khi lưu.')) {
-                     removeBtn.closest('tr').remove();
-                }
-            }
-        });
+        // Hàm xử lý khi bấm nút xóa
+        function handleRemoveRow() {
+             if (confirm('Xóa biến thể này? Nếu là biến thể đã tồn tại, nó sẽ bị xóa vĩnh viễn khỏi DB sau khi lưu.')) {
+                 this.closest('tr').remove();
+             }
+        }
         
-        // 3. Quản lý Hình ảnh (Xóa ảnh hiện có)
+        // Hàm gắn sự kiện xóa (chạy cho cả hàng cũ và hàng mới)
+        function setupRemoveRowListeners() {
+            variantsBody.querySelectorAll('.remove-row').forEach(button => {
+                button.removeEventListener('click', handleRemoveRow);
+                button.addEventListener('click', handleRemoveRow);
+            });
+        }
+        
+        // 1. Gắn sự kiện xóa cho các hàng hiện có khi tải trang
+        setupRemoveRowListeners();
+
+
+        // 2. Quản lý Biến thể (Thêm hàng mới)
+        if (addButton) {
+            addButton.addEventListener('click', function(e) {
+                e.preventDefault(); 
+                
+                const template = document.getElementById('new-variant-template');
+                if (!template) {
+                    console.error('Template not found!');
+                    return;
+                }
+                
+                // Lấy HTML content và thay thế placeholder
+                let htmlContent = template.innerHTML;
+                htmlContent = htmlContent.replace(/NEW_INDEX/g, variantCounter);
+                
+                // Chèn HTML mới vào <tbody>
+                variantsBody.insertAdjacentHTML('beforeend', htmlContent);
+
+                // Tăng bộ đếm
+                variantCounter++;
+                
+                // Gắn lại sự kiện xóa cho TẤT CẢ các nút xóa
+                setupRemoveRowListeners();
+            });
+        }
+        
+        // 3. Quản lý Hình ảnh (Xóa ảnh hiện có) - Giữ nguyên logic này
         document.getElementById('existing-images-container').addEventListener('click', function(e) {
             const deleteBtn = e.target.closest('.delete-existing-image');
             if (deleteBtn) {
@@ -228,15 +250,13 @@
                 const deleteFlagInput = document.getElementById('delete-flag-' + imageId);
                 
                 if (confirm('Bạn có chắc muốn xóa ảnh này? Nó sẽ bị xóa khỏi cơ sở dữ liệu sau khi cập nhật.')) {
-                    // Kích hoạt input hidden để gửi ID ảnh cần xóa
                     deleteFlagInput.value = imageId;
                     deleteFlagInput.disabled = false;
                     
-                    // Ẩn ảnh trên giao diện và vô hiệu hóa nút xóa ảnh hiện tại
                     if (parentItem) {
                         parentItem.style.opacity = 0.3;
                         parentItem.style.border = '1px dashed red';
-                        deleteBtn.remove(); // Xóa nút bấm
+                        deleteBtn.remove();
                     }
                 }
             }

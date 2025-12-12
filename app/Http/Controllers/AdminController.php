@@ -329,152 +329,302 @@ class AdminController extends Controller
      */
     public function createProduct()
     {
+        // if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+        // $thuongHieu = ThuongHieu::all(); // Lấy danh sách thương hiệu
+        // return view('admin.products.create', compact('thuongHieu'));
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-
-        $thuongHieu = ThuongHieu::all(); // Lấy danh sách thương hiệu
-        return view('admin.products.create', compact('thuongHieu'));
+        $thuongHieu = ThuongHieu::all();
+        $danhMuc = DanhMuc::whereNull('deleted_at')->get(); // <<< LẤY DANH MỤC >>>
+        // Pass danhMuc list to the view
+        return view('admin.products.create', compact('thuongHieu', 'danhMuc'));
     }
 
     /**
      * 3. Xử lý lưu sản phẩm mới
      */
-    public function storeProduct(Request $request)
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+    // public function storeProduct(Request $request)
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        // Validate dữ liệu
-        $request->validate([
-            'ten' => 'required|max:191',
-            'sku' => 'required|unique:bien_the_san_pham,sku',
-            'gia' => 'required|numeric|min:0',
-            'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+    //     // Validate dữ liệu
+    //     $request->validate([
+    //         'ten' => 'required|max:191',
+    //         'sku' => 'required|unique:bien_the_san_pham,sku',
+    //         'gia' => 'required|numeric|min:0',
+    //         'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    //     ]);
 
-        try {
-            DB::beginTransaction();
+    //     try {
+    //         DB::beginTransaction();
 
-            // Tạo Sản Phẩm
-            $sanPham = new SanPham();
-            $sanPham->ten = $request->ten;
-            $sanPham->slug = Str::slug($request->ten) . '-' . Str::random(4);
-            $sanPham->thuong_hieu_id = $request->thuong_hieu_id;
-            $sanPham->mo_ta_ngan = $request->mo_ta_ngan;
-            $sanPham->mo_ta_day_du = $request->mo_ta_day_du;
-            $sanPham->hien_thi = $request->has('hien_thi') ? 1 : 0;
+    //         // Tạo Sản Phẩm
+    //         $sanPham = new SanPham();
+    //         $sanPham->ten = $request->ten;
+    //         $sanPham->slug = Str::slug($request->ten) . '-' . Str::random(4);
+    //         $sanPham->thuong_hieu_id = $request->thuong_hieu_id;
+    //         $sanPham->mo_ta_ngan = $request->mo_ta_ngan;
+    //         $sanPham->mo_ta_day_du = $request->mo_ta_day_du;
+    //         $sanPham->hien_thi = $request->has('hien_thi') ? 1 : 0;
 
-            // Upload ảnh
-            if ($request->hasFile('hinh_anh')) {
-                $file = $request->file('hinh_anh');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path('uploads'), $filename);
-                $sanPham->hinh_anh_mac_dinh = $filename;
-            }
+    //         // Upload ảnh
+    //         if ($request->hasFile('hinh_anh')) {
+    //             $file = $request->file('hinh_anh');
+    //             $filename = time() . '_' . $file->getClientOriginalName();
+    //             $file->move(public_path('uploads'), $filename);
+    //             $sanPham->hinh_anh_mac_dinh = $filename;
+    //         }
 
-            $sanPham->save();
+    //         $sanPham->save();
 
-            // Tạo Biến Thể (Giá/Kho/SKU)
-            $bienThe = new BienTheSanPham();
-            $bienThe->san_pham_id = $sanPham->id;
-            $bienThe->sku = $request->sku;
-            $bienThe->gia = $request->gia;
-            $bienThe->gia_so_sanh = $request->gia_so_sanh;
-            $bienThe->ton_kho = $request->ton_kho ?? 0;
-            $bienThe->dang_ban = 1; // Mặc định bán ngay
-            $bienThe->save();
+    //         // Tạo Biến Thể (Giá/Kho/SKU)
+    //         $bienThe = new BienTheSanPham();
+    //         $bienThe->san_pham_id = $sanPham->id;
+    //         $bienThe->sku = $request->sku;
+    //         $bienThe->gia = $request->gia;
+    //         $bienThe->gia_so_sanh = $request->gia_so_sanh;
+    //         $bienThe->ton_kho = $request->ton_kho ?? 0;
+    //         $bienThe->dang_ban = 1; // Mặc định bán ngay
+    //         $bienThe->save();
 
-            DB::commit();
+    //         DB::commit();
 
-            return redirect()->route('admin.products')->with('success', 'Thêm sản phẩm thành công!');
+    //         return redirect()->route('admin.products')->with('success', 'Thêm sản phẩm thành công!');
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
-        }
-    }
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
+    //     }
+    // }
 
     /**
      * 4. Form sửa sản phẩm
      */
-    public function editProduct($id)
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+    // public function editProduct($id)
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        // FIX LỖI: Dùng 'bienTheSanPham' thay vì 'bienThe'
-        $product = SanPham::with('bienTheSanPham')->findOrFail($id);
-        $thuongHieu = ThuongHieu::all();
+    //     // FIX LỖI: Dùng 'bienTheSanPham' thay vì 'bienThe'
+    //     $product = SanPham::with('bienTheSanPham')->findOrFail($id);
+    //     $thuongHieu = ThuongHieu::all();
         
-        // SỬ DỤNG TÊN MỐI QUAN HỆ ĐÚNG
-        $firstVariant = $product->bienTheSanPham->first();
+    //     // SỬ DỤNG TÊN MỐI QUAN HỆ ĐÚNG
+    //     $firstVariant = $product->bienTheSanPham->first();
 
-        return view('admin.products.edit', compact('product', 'thuongHieu', 'firstVariant'));
-    }
+    //     return view('admin.products.edit', compact('product', 'thuongHieu', 'firstVariant'));
+    // }
     /**
      * 5. Xử lý cập nhật sản phẩm
      */
-    public function updateProduct(Request $request, $id)
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+    // public function updateProduct(Request $request, $id)
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        $product = SanPham::findOrFail($id);
+    //     $product = SanPham::findOrFail($id);
         
-        // Lấy biến thể chính cần sửa
-        $variant = $product->bienTheSanPham()->first(); 
-        $variantId = $variant ? $variant->id : null;
+    //     // Lấy biến thể chính cần sửa
+    //     $variant = $product->bienTheSanPham()->first(); 
+    //     $variantId = $variant ? $variant->id : null;
 
-        $request->validate([
-            'ten' => 'required|max:191',
-            'sku' => 'required|unique:bien_the_san_pham,sku,' . $variantId,
-            'gia' => 'required|numeric|min:0',
-            'hinh_anh' => 'nullable|image|max:2048',
-        ]);
+    //     $request->validate([
+    //         'ten' => 'required|max:191',
+    //         'sku' => 'required|unique:bien_the_san_pham,sku,' . $variantId,
+    //         'gia' => 'required|numeric|min:0',
+    //         'hinh_anh' => 'nullable|image|max:2048',
+    //     ]);
 
-        try {
-            DB::beginTransaction();
+    //     try {
+    //         DB::beginTransaction();
 
-            // Cập nhật thông tin chung
-            $product->ten = $request->ten;
-            $product->thuong_hieu_id = $request->thuong_hieu_id;
-            $product->mo_ta_ngan = $request->mo_ta_ngan;
-            $product->mo_ta_day_du = $request->mo_ta_day_du;
-            $product->hien_thi = $request->has('hien_thi') ? 1 : 0;
+    //         // Cập nhật thông tin chung
+    //         $product->ten = $request->ten;
+    //         $product->thuong_hieu_id = $request->thuong_hieu_id;
+    //         $product->mo_ta_ngan = $request->mo_ta_ngan;
+    //         $product->mo_ta_day_du = $request->mo_ta_day_du;
+    //         $product->hien_thi = $request->has('hien_thi') ? 1 : 0;
 
-            // Xử lý ảnh mới nếu có
-            if ($request->hasFile('hinh_anh')) {
-                // (Tùy chọn: Xóa ảnh cũ ở đây nếu muốn tiết kiệm dung lượng)
-                $file = $request->file('hinh_anh');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path('uploads'), $filename);
-                $product->hinh_anh_mac_dinh = $filename;
-            }
-            $product->save();
+    //         // Xử lý ảnh mới nếu có
+    //         if ($request->hasFile('hinh_anh')) {
+    //             // (Tùy chọn: Xóa ảnh cũ ở đây nếu muốn tiết kiệm dung lượng)
+    //             $file = $request->file('hinh_anh');
+    //             $filename = time() . '_' . $file->getClientOriginalName();
+    //             $file->move(public_path('uploads'), $filename);
+    //             $product->hinh_anh_mac_dinh = $filename;
+    //         }
+    //         $product->save();
 
-            // Cập nhật hoặc Tạo biến thể
-            if ($variant) {
-                $variant->sku = $request->sku;
-                $variant->gia = $request->gia;
-                $variant->gia_so_sanh = $request->gia_so_sanh;
-                $variant->ton_kho = $request->ton_kho;
-                $variant->save();
-            } else {
-                // Trường hợp dữ liệu cũ bị thiếu biến thể, tạo mới để fix lỗi
-                BienTheSanPham::create([
-                    'san_pham_id' => $product->id,
-                    'sku' => $request->sku,
-                    'gia' => $request->gia,
-                    'ton_kho' => $request->ton_kho,
-                    'dang_ban' => 1
-                ]);
-            }
+    //         // Cập nhật hoặc Tạo biến thể
+    //         if ($variant) {
+    //             $variant->sku = $request->sku;
+    //             $variant->gia = $request->gia;
+    //             $variant->gia_so_sanh = $request->gia_so_sanh;
+    //             $variant->ton_kho = $request->ton_kho;
+    //             $variant->save();
+    //         } else {
+    //             // Trường hợp dữ liệu cũ bị thiếu biến thể, tạo mới để fix lỗi
+    //             BienTheSanPham::create([
+    //                 'san_pham_id' => $product->id,
+    //                 'sku' => $request->sku,
+    //                 'gia' => $request->gia,
+    //                 'ton_kho' => $request->ton_kho,
+    //                 'dang_ban' => 1
+    //             ]);
+    //         }
 
-            DB::commit();
-            return redirect()->route('admin.products')->with('success', 'Cập nhật thành công!');
+    //         DB::commit();
+    //         return redirect()->route('admin.products')->with('success', 'Cập nhật thành công!');
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Lỗi: ' . $e->getMessage());
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return back()->with('error', 'Lỗi: ' . $e->getMessage());
+    //     }
+    // }
+    // 3. Xử lý lưu sản phẩm mới
+public function storeProduct(Request $request)
+{
+    if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+    // Validate dữ liệu
+    $request->validate([
+        'ten' => 'required|max:191',
+        'sku' => 'required|unique:bien_the_san_pham,sku',
+        'gia' => 'required|numeric|min:0',
+        'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        'danh_muc_ids' => 'required|array', // <<< YÊU CẦU CHỌN DANH MỤC >>>
+        'danh_muc_ids.*' => 'exists:danh_muc,id',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        // 1. Tạo Sản Phẩm
+        $sanPham = new SanPham();
+        $sanPham->ten = $request->ten;
+        $sanPham->slug = Str::slug($request->ten) . '-' . Str::random(4);
+        $sanPham->thuong_hieu_id = $request->thuong_hieu_id;
+        $sanPham->mo_ta_ngan = $request->mo_ta_ngan;
+        $sanPham->mo_ta_day_du = $request->mo_ta_day_du;
+        $sanPham->hien_thi = $request->has('hien_thi') ? 1 : 0;
+
+        // Upload ảnh
+        if ($request->hasFile('hinh_anh')) {
+            $file = $request->file('hinh_anh');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads'), $filename);
+            $sanPham->hinh_anh_mac_dinh = $filename;
         }
-    }
 
+        $sanPham->save();
+        
+        // <<< LƯU MỐI QUAN HỆ DANH MỤC (ATTACH) >>>
+        $sanPham->danhMuc()->attach($request->danh_muc_ids); 
+
+        // 2. Tạo Biến Thể (Giá/Kho/SKU)
+        $bienThe = new BienTheSanPham();
+        $bienThe->san_pham_id = $sanPham->id;
+        $bienThe->sku = $request->sku;
+        $bienThe->gia = $request->gia;
+        $bienThe->gia_so_sanh = $request->gia_so_sanh;
+        $bienThe->ton_kho = $request->ton_kho ?? 0;
+        $bienThe->dang_ban = 1; 
+        $bienThe->save();
+
+        DB::commit();
+
+        return redirect()->route('admin.products')->with('success', 'Thêm sản phẩm thành công!');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
+    }
+}
+
+// 4. Form sửa sản phẩm
+public function editProduct($id)
+{
+    if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+    // Load thêm mối quan hệ danhMuc
+    $product = SanPham::with('bienTheSanPham', 'danhMuc')->findOrFail($id); 
+    $thuongHieu = ThuongHieu::all();
+    $danhMuc = DanhMuc::whereNull('deleted_at')->get(); // <<< LẤY DANH MỤC >>>
+    
+    $firstVariant = $product->bienTheSanPham->first();
+
+    // Pass danhMuc list to the view
+    return view('admin.products.edit', compact('product', 'thuongHieu', 'firstVariant', 'danhMuc'));
+}
+
+// 5. Xử lý cập nhật sản phẩm
+// app.zip/Http/Controllers/AdminController.php - Phương thức updateProduct
+
+public function updateProduct(Request $request, $id)
+{
+    if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
+    $product = SanPham::findOrFail($id);
+    // Lấy biến thể đầu tiên để kiểm tra ID khi validate unique SKU
+    $variant = $product->bienTheSanPham()->first(); 
+    $variantId = $variant ? $variant->id : null;
+
+    $request->validate([
+        'ten' => 'required|max:191',
+        'sku' => 'required|unique:bien_the_san_pham,sku,' . $variantId . ',id', // Thêm validation unique SKU
+        'gia' => 'required|numeric|min:0',
+        'hinh_anh' => 'nullable|image|max:2048',
+        'danh_muc_ids' => 'required|array', 
+        'danh_muc_ids.*' => 'exists:danh_muc,id',
+    ]);
+
+    DB::beginTransaction();
+    try {
+        // --- GHI DỮ LIỆU SẢN PHẨM CHÍNH ---
+        
+        $product->ten = $request->ten;
+        $product->slug = Str::slug($request->ten) . '-' . $product->id; 
+        $product->thuong_hieu_id = $request->thuong_hieu_id;
+        $product->mo_ta_ngan = $request->mo_ta_ngan;
+        $product->mo_ta_day_du = $request->mo_ta_day_du;
+        $product->hien_thi = $request->has('hien_thi') ? 1 : 0;
+        
+        // Cập nhật cờ đặc biệt (Flash Sale/Nổi bật)
+        $product->la_flash_sale = $request->has('la_flash_sale') ? 1 : 0;
+        $product->la_noi_bat = $request->has('la_noi_bat') ? 1 : 0;
+
+        // Xử lý Upload ảnh chính (Giữ nguyên logic cũ)
+        if ($request->hasFile('hinh_anh')) {
+            $file = $request->file('hinh_anh');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads'), $filename);
+            $product->hinh_anh_mac_dinh = $filename;
+        }
+
+        $product->save();
+        
+        // --- GHI MỐI QUAN HỆ DANH MỤC (Many-to-Many) ---
+        $product->danhMuc()->sync($request->danh_muc_ids); 
+        
+        // --- GHI DỮ LIỆU BIẾN THỂ ĐẦU TIÊN (Giả định sản phẩm đơn giản chỉ có 1 biến thể) ---
+        if ($variant) {
+            $variant->sku = $request->sku;
+            $variant->gia = $request->gia;
+            $variant->gia_so_sanh = $request->gia_so_sanh;
+            $variant->ton_kho = $request->ton_kho ?? 0;
+            $variant->mau_sac = $request->mau_sac; // Nếu form có field này
+            $variant->dung_luong_gb = $request->dung_luong_gb; // Nếu form có field này
+            $variant->dang_ban = 1;
+            $variant->save();
+        }
+        
+        DB::commit();
+        return redirect()->route('admin.products')->with('success', 'Cập nhật thành công!');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        // Dòng này rất quan trọng để xem lỗi SQL hoặc lỗi code
+        // dd($e); 
+        return back()->with('error', 'Lỗi: ' . $e->getMessage());
+    }
+}
     /**
      * 6. Xóa sản phẩm
      */
@@ -754,16 +904,32 @@ class AdminController extends Controller
     public function storeBrand(Request $request)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
-        $request->validate(['ten' => 'required|max:191|unique:thuong_hieu,ten']);
+
+        $request->validate([
+            'ten' => 'required|max:191|unique:thuong_hieu,ten',
+            'hinh_anh' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // BẮT BUỘC có ảnh khi tạo
+        ]);
 
         try {
+            $hinhAnhPath = null;
+            if ($request->hasFile('hinh_anh')) {
+                $file = $request->file('hinh_anh');
+                // Đường dẫn lưu file: public/images/brands
+                $destinationPath = public_path('images/brands');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move($destinationPath, $filename);
+                $hinhAnhPath = $filename;
+            }
+
             ThuongHieu::create([
                 'ten' => $request->ten,
                 'slug' => Str::slug($request->ten),
+                'hinh_anh' => $hinhAnhPath, // LƯU TÊN FILE
             ]);
+
             return redirect()->route('admin.brands')->with('success', 'Thêm thương hiệu thành công!');
         } catch (\Exception $e) {
-            return back()->with('error', 'Lỗi: ' . $e->getMessage());
+            return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -777,17 +943,36 @@ class AdminController extends Controller
     public function updateBrand(Request $request, $id)
     {
         if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+
         $brand = ThuongHieu::findOrFail($id);
-        $request->validate(['ten' => 'required|max:191|unique:thuong_hieu,ten,' . $id]);
+
+        $request->validate([
+            'ten' => 'required|max:191|unique:thuong_hieu,ten,' . $brand->id,
+            'hinh_anh_moi' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Ảnh mới là tùy chọn
+        ]);
 
         try {
-            $brand->update([
-                'ten' => $request->ten,
-                'slug' => Str::slug($request->ten),
-            ]);
+            $brand->ten = $request->ten;
+            $brand->slug = Str::slug($request->ten);
+
+            if ($request->hasFile('hinh_anh_moi')) {
+                // Tùy chọn: Xóa ảnh cũ
+                // if ($brand->hinh_anh && file_exists(public_path('images/brands/' . $brand->hinh_anh))) {
+                //     unlink(public_path('images/brands/' . $brand->hinh_anh));
+                // }
+                
+                $file = $request->file('hinh_anh_moi');
+                $destinationPath = public_path('images/brands');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move($destinationPath, $filename);
+                $brand->hinh_anh = $filename; // LƯU TÊN FILE MỚI
+            }
+
+            $brand->save();
+
             return redirect()->route('admin.brands')->with('success', 'Cập nhật thương hiệu thành công!');
         } catch (\Exception $e) {
-            return back()->with('error', 'Lỗi: ' . $e->getMessage());
+            return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
         }
     }
 

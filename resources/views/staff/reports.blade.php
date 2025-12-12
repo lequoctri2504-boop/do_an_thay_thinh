@@ -18,21 +18,23 @@
                     <option value="this_year" {{ ($selectedQuick ?? '') == 'this_year' ? 'selected' : '' }}>Năm nay</option>
                     <option value="custom" {{ ($selectedQuick ?? '') == 'custom' ? 'selected' : '' }}>Tùy chỉnh</option>
                 </select>
-                
+
                 {{-- CUSTOM DATE PICKER --}}
-                <div id="custom_date_range" class="d-flex align-items-center gap-2" style="display: none;">
+                <div id="custom_date_range" class="d-flex align-items-center gap-2"
+                    style="display: {{ ($selectedQuick ?? '') == 'custom' ? 'flex' : 'none' }};">
                     <label for="start_date" class="small mb-0">Từ:</label>
-                    <input type="date" name="start_date" id="start_date" class="form-control" 
-                           value="{{ $queryStartFormatted ?? '' }}" style="width: 150px;">
-                    
+                    <input type="date" name="start_date" id="start_date" class="form-control"
+                        value="{{ $queryStartFormatted ?? '' }}" style="width: 150px;">
+
                     <label for="end_date" class="small mb-0">Đến:</label>
-                    <input type="date" name="end_date" id="end_date" class="form-control" 
-                           value="{{ $queryEndFormatted ?? '' }}" style="width: 150px;">
-                    
+                    <input type="date" name="end_date" id="end_date" class="form-control"
+                        value="{{ $queryEndFormatted ?? '' }}" style="width: 150px;">
+
                     <button type="submit" class="btn btn-sm btn-primary">Lọc</button>
                 </div>
-                
-                <button type="button" onclick="alert('Chức năng Xuất file đang được phát triển, vui lòng cài đặt thư viện.');" class="btn btn-primary">
+
+                {{-- NÚT XUẤT BÁO CÁO (PLACEHOLDER) --}}
+                <button type="button" id="export-report-btn" class="btn btn-success">
                     <i class="fas fa-download"></i> Xuất báo cáo
                 </button>
             </form>
@@ -76,25 +78,26 @@
 
     {{-- Dữ liệu chi tiết --}}
     <div class="dashboard-row">
-        
-        {{-- Top sản phẩm bán chạy --}}
+
+        {{-- Top sản phẩm bán chạy (ĐÃ FIX) --}}
         <div class="dashboard-card col-6">
             <div class="card-header">
                 <h3><i class="fas fa-trophy"></i> Top 5 Sản phẩm bán chạy nhất</h3>
+                <small class="text-muted">Tính theo số lượng bán ra trong kỳ.</small>
             </div>
             <div class="low-stock-list">
                 @forelse($topSellingProducts ?? [] as $key => $product)
-                    <div class="stock-item" style="padding: 15px; border-radius: 8px; background: #f9f9f9; margin-bottom: 10px;">
-                        <div class="stock-info" style="display: flex; justify-content: space-between;">
-                            <strong>{{ $key + 1 }}. {{ $product->ten }}</strong>
-                            <span class="stock-qty" style="font-weight: 600; color: var(--primary-color);">
-                                Bán: {{ $product->tong_so_luong_ban }} SP
-                            </span>
-                        </div>
-                        <small class="text-muted">Doanh thu: {{ number_format($product->tong_doanh_thu) }}₫</small>
+                <div class="stock-item" style="padding: 15px; border-radius: 8px; background: #f9f9f9; margin-bottom: 10px;">
+                    <div class="stock-info" style="display: flex; justify-content: space-between;">
+                        <strong>{{ $key + 1 }}. {{ \Illuminate\Support\Str::limit($product->ten, 45) }}</strong>
+                        <span class="stock-qty" style="font-weight: 600; color: var(--primary-color);">
+                            Bán: {{ number_format($product->tong_so_luong_ban) }} SP
+                        </span>
                     </div>
+                    <small class="text-muted">Doanh thu: {{ number_format($product->tong_doanh_thu) }}₫</small>
+                </div>
                 @empty
-                    <p class="text-center" style="padding: 20px;">Chưa có dữ liệu bán hàng trong giai đoạn này.</p>
+                <p class="text-center" style="padding: 20px;">Chưa có dữ liệu bán hàng trong giai đoạn này.</p>
                 @endforelse
             </div>
         </div>
@@ -103,24 +106,25 @@
         <div class="dashboard-card col-6">
             <div class="card-header">
                 <h3><i class="fas fa-history"></i> Đơn hàng gần đây</h3>
+                <small class="text-muted">5 đơn hàng mới nhất trong kỳ.</small>
             </div>
             <div class="table-responsive">
                 <table class="data-table">
                     <thead>
-                    <tr>
-                        <th>Mã đơn</th>
-                        <th>Khách hàng</th>
-                        <th>Tổng tiền</th>
-                        <th>Trạng thái</th>
-                    </tr>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                        </tr>
                     </thead>
                     <tbody>
-                    @forelse($recentOrders ?? [] as $o)
+                        @forelse($recentOrders ?? [] as $o)
                         @php
-                            $status = strtolower($o->trang_thai);
-                            if ($status == 'dang_xu_ly') $statusClass = 'processing';
-                            elseif ($status == 'hoan_thanh') $statusClass = 'delivered';
-                            else $statusClass = 'cancelled';
+                        $status = strtolower($o->trang_thai);
+                        if ($status == 'dang_xu_ly') $statusClass = 'processing';
+                        elseif ($status == 'hoan_thanh') $statusClass = 'delivered';
+                        else $statusClass = 'cancelled';
                         @endphp
                         <tr>
                             <td><strong>#{{ $o->ma }}</strong></td>
@@ -128,9 +132,11 @@
                             <td>{{ number_format($o->thanh_tien) }}₫</td>
                             <td><span class="status-badge status-{{ $statusClass }}">{{ $o->trang_thai }}</span></td>
                         </tr>
-                    @empty
-                        <tr><td colspan="4" class="text-center">Chưa có đơn hàng nào.</td></tr>
-                    @endforelse
+                        @empty
+                        <tr>
+                            <td colspan="4" class="text-center">Chưa có đơn hàng nào.</td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -147,14 +153,15 @@
         const form = selectElement.closest('form');
         const startDateInput = document.getElementById('start_date');
         const endDateInput = document.getElementById('end_date');
+        const exportBtn = document.getElementById('export-report-btn'); 
         
         const initialSelectedQuick = '{{ $selectedQuick ?? "this_month" }}';
         
         function toggleCustomDate(selectedValue) {
             if (selectedValue === 'custom') {
                 customDateRange.style.display = 'flex';
-                startDateInput.required = true;
-                endDateInput.required = true;
+                startDateInput.required = false; 
+                endDateInput.required = false;
             } else {
                 customDateRange.style.display = 'none';
                 startDateInput.required = false;
@@ -164,7 +171,6 @@
 
         window.submitQuickSelect = function(selectedValue) {
             if (selectedValue !== 'custom') {
-                // Clear custom dates before submitting quick select
                 startDateInput.value = ''; 
                 endDateInput.value = '';
                 form.submit();
@@ -173,16 +179,46 @@
             }
         }
         
-        // Khởi tạo trạng thái ban đầu và đảm bảo Custom Date được hiển thị nếu đang lọc theo đó
+        // Khởi tạo trạng thái ban đầu
         toggleCustomDate(initialSelectedQuick);
-        if (initialSelectedQuick === 'custom') {
-            document.getElementById('custom_date_range').style.display = 'flex';
-        }
-
+        
         // Gắn sự kiện change cho select
         selectElement.addEventListener('change', function() {
             window.submitQuickSelect(this.value);
         });
+        
+        // Gắn sự kiện submit cho form (xử lý validation cho Custom Date)
+        form.addEventListener('submit', function(e) {
+            if (selectElement.value === 'custom') {
+                if (!startDateInput.value || !endDateInput.value) {
+                    e.preventDefault();
+                    alert('Vui lòng chọn cả Ngày bắt đầu và Ngày kết thúc cho báo cáo tùy chỉnh.'); 
+                }
+            }
+        });
+
+        // HÀM XUẤT BÁO CÁO (Logic chính để tạo URL)
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                let exportUrl = '{{ route('staff.reports.export') }}';
+                const params = new URLSearchParams();
+                
+                const selectedValue = selectElement.value;
+                params.set('quick_select', selectedValue);
+                
+                if (selectedValue === 'custom') {
+                    if (!startDateInput.value || !endDateInput.value) {
+                        alert('Vui lòng chọn cả Ngày bắt đầu và Ngày kết thúc để xuất báo cáo.');
+                        return;
+                    }
+                    params.set('start_date', startDateInput.value);
+                    params.set('end_date', endDateInput.value);
+                }
+                
+                // Chuyển hướng đến URL Export với các tham số lọc đã chọn
+                window.location.href = exportUrl + '?' + params.toString();
+            });
+        }
     });
 </script>
 @endpush

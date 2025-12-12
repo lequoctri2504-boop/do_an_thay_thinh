@@ -6,6 +6,8 @@ use App\Models\SanPham;
 use App\Models\DanhMuc;
 use App\Models\ThuongHieu;
 use App\Models\BaiViet; // <<< BỔ SUNG MODEL TIN TỨC >>>
+use App\Models\KhuyenMai;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -102,5 +104,20 @@ class HomeController extends Controller
 
         // Truyền thêm newsArticles vào view
         return view('welcome', compact('categories', 'brands', 'flashSaleProducts', 'featuredProducts', 'cartCount', 'wishlistCount', 'banners', 'newsArticles'));
+    }
+
+    public function promotions()
+    {
+        $currentDate = Carbon::now();
+        
+        $promotions = KhuyenMai::where('ngay_bat_dau', '<=', $currentDate)
+                               ->where('ngay_ket_thuc', '>=', $currentDate)
+                               ->orderBy('ngay_bat_dau', 'desc')
+                               ->get();
+
+        // $cartCount = $this->getCartCount();
+        // $wishlistCount = $this->getWishlistCount();
+
+        return view('pages.promotions', compact('promotions'));
     }
 }
