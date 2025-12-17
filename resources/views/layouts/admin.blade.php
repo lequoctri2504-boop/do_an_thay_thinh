@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>@yield('title', 'Dashboard Admin - PhoneShop')</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="stylesheet"
@@ -116,6 +117,12 @@
                     <i class="fas fa-cog"></i>
                     <span>Cài đặt</span>
                 </a> -->
+                <!-- <a href="{{ route('admin.orders.export', ['type' => 'excel']) }}" class="btn btn-success">
+        <i class="fas fa-file-excel"></i> Xuất Excel
+    </a>
+    <a href="{{ route('admin.orders.export', ['type' => 'pdf']) }}" class="btn btn-danger">
+        <i class="fas fa-file-pdf"></i> Xuất PDF
+    </a> -->
             </nav>
         </aside>
 

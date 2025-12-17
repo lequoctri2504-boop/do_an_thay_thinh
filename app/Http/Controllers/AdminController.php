@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AdminOrderExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\AdminReportExport;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +20,7 @@ use App\Models\ThuongHieu;
 use App\Models\BienTheSanPham;
 use App\Models\DanhMuc;
 use App\Models\DanhGia; // <-- ĐÃ THÊM
+use App\Models\DonHangChiTiet;
 use App\Models\KhuyenMai;
 use Illuminate\Support\Facades\Hash;
 
@@ -1171,101 +1177,156 @@ public function updateProduct(Request $request, $id)
     }
     
     // BÁO CÁO TỔNG HỢP (ĐÃ CẬP NHẬT)
-    public function reports(Request $request)
-    {
-        if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
+    // public function reports(Request $request)
+    // {
+    //     if ($redirect = $this->ensureAdminOrStaff()) return $redirect;
 
-        $currentDate = Carbon::now();
-        $queryStart = null;
-        $queryEnd = null;
-        $selectedQuick = null;
+    //     $currentDate = Carbon::now();
+    //     $queryStart = null;
+    //     $queryEnd = null;
+    //     $selectedQuick = null;
 
-        // --- 1. Xử lý Lọc theo Ngày/Tháng/Năm (Tương tự Dashboard) ---
-        if ($request->has('quick_select') && $request->quick_select != '') {
-            $selectedQuick = $request->quick_select;
-            switch ($selectedQuick) {
-                case 'today':
-                    $queryStart = $currentDate->copy()->startOfDay();
-                    $queryEnd = $currentDate->copy()->endOfDay();
-                    break;
-                case 'this_month':
-                    $queryStart = $currentDate->copy()->startOfMonth();
-                    $queryEnd = $currentDate->copy()->endOfDay();
-                    break;
-                case 'this_year':
-                    $queryStart = $currentDate->copy()->startOfYear();
-                    $queryEnd = $currentDate->copy()->endOfDay();
-                    break;
-                case 'custom':
-                    if ($request->has('start_date') && $request->has('end_date') && $request->start_date && $request->end_date) {
-                        $queryStart = Carbon::parse($request->start_date)->startOfDay();
-                        $queryEnd = Carbon::parse($request->end_date)->endOfDay();
-                    }
-                    break;
-            }
-        } 
+    //     // --- 1. Xử lý Lọc theo Ngày/Tháng/Năm (Tương tự Dashboard) ---
+    //     if ($request->has('quick_select') && $request->quick_select != '') {
+    //         $selectedQuick = $request->quick_select;
+    //         switch ($selectedQuick) {
+    //             case 'today':
+    //                 $queryStart = $currentDate->copy()->startOfDay();
+    //                 $queryEnd = $currentDate->copy()->endOfDay();
+    //                 break;
+    //             case 'this_month':
+    //                 $queryStart = $currentDate->copy()->startOfMonth();
+    //                 $queryEnd = $currentDate->copy()->endOfDay();
+    //                 break;
+    //             case 'this_year':
+    //                 $queryStart = $currentDate->copy()->startOfYear();
+    //                 $queryEnd = $currentDate->copy()->endOfDay();
+    //                 break;
+    //             case 'custom':
+    //                 if ($request->has('start_date') && $request->has('end_date') && $request->start_date && $request->end_date) {
+    //                     $queryStart = Carbon::parse($request->start_date)->startOfDay();
+    //                     $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+    //                 }
+    //                 break;
+    //         }
+    //     } 
         
-        if (is_null($queryStart) || is_null($queryEnd)) {
-            $queryStart = $currentDate->copy()->startOfMonth();
-            $queryEnd = $currentDate->copy()->endOfDay();
-            $selectedQuick = $selectedQuick ?? 'this_month';
-        }
+    //     if (is_null($queryStart) || is_null($queryEnd)) {
+    //         $queryStart = $currentDate->copy()->startOfMonth();
+    //         $queryEnd = $currentDate->copy()->endOfDay();
+    //         $selectedQuick = $selectedQuick ?? 'this_month';
+    //     }
 
-        // --- 2. Tính toán thống kê ---
+    //     // --- 2. Tính toán thống kê ---
         
-        // Doanh thu và Đơn hàng
-        $tongDoanhThu = DonHang::where('trang_thai', 'HOAN_THANH')
-            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-            ->sum('thanh_tien');
+    //     // Doanh thu và Đơn hàng
+    //     $tongDoanhThu = DonHang::where('trang_thai', 'HOAN_THANH')
+    //         ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+    //         ->sum('thanh_tien');
 
-        $tongDonHang = DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
+    //     $tongDonHang = DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
         
-        // Khách hàng mới (Vai trò KHACH_HANG)
-        $khachHangMoi = User::where('vai_tro', 'KHACH_HANG')
-            ->whereBetween('created_at', [$queryStart, $queryEnd])
-            ->count();
+    //     // Khách hàng mới (Vai trò KHACH_HANG)
+    //     $khachHangMoi = User::where('vai_tro', 'KHACH_HANG')
+    //         ->whereBetween('created_at', [$queryStart, $queryEnd])
+    //         ->count();
 
-        // Đánh giá trung bình (FIXED: DanhGia::query())
-        $avgRating = DanhGia::query()->where('duyet', 1)->avg('so_sao') ?? 0;
+    //     // Đánh giá trung bình (FIXED: DanhGia::query())
+    //     $avgRating = DanhGia::query()->where('duyet', 1)->avg('so_sao') ?? 0;
         
-        // Top Sản phẩm bán chạy nhất (ĐÃ SỬA LỖI AMBIGUOUS)
-        $topSellingProducts = \App\Models\DonHangChiTiet::select('san_pham_id', DB::raw('SUM(so_luong) as tong_so_luong_ban'), DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu'))
-            ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
-            ->where('don_hang.trang_thai', 'HOAN_THANH')
-            ->whereBetween('don_hang.ngay_dat', [$queryStart, $queryEnd])
-            ->groupBy('san_pham_id')
-            ->orderBy('tong_so_luong_ban', 'desc')
-            ->with('sanPham') 
-            ->limit(5)
-            ->get()
-            ->map(function($item) {
-                $item->ten = $item->sanPham->ten ?? 'Sản phẩm đã xóa';
-                return $item;
-            });
+    //     // Top Sản phẩm bán chạy nhất (ĐÃ SỬA LỖI AMBIGUOUS)
+    //     $topSellingProducts = \App\Models\DonHangChiTiet::select('san_pham_id', DB::raw('SUM(so_luong) as tong_so_luong_ban'), DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu'))
+    //         ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+    //         ->where('don_hang.trang_thai', 'HOAN_THANH')
+    //         ->whereBetween('don_hang.ngay_dat', [$queryStart, $queryEnd])
+    //         ->groupBy('san_pham_id')
+    //         ->orderBy('tong_so_luong_ban', 'desc')
+    //         ->with('sanPham') 
+    //         ->limit(5)
+    //         ->get()
+    //         ->map(function($item) {
+    //             $item->ten = $item->sanPham->ten ?? 'Sản phẩm đã xóa';
+    //             return $item;
+    //         });
 
-        // Đơn hàng gần đây
-        $recentOrders = DonHang::with('nguoiDung')
-            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-            ->orderBy('ngay_dat', 'desc')
-            ->limit(5)
-            ->get();
+    //     // Đơn hàng gần đây
+    //     $recentOrders = DonHang::with('nguoiDung')
+    //         ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+    //         ->orderBy('ngay_dat', 'desc')
+    //         ->limit(5)
+    //         ->get();
         
-        // Truyền các biến ngày tháng
-        $queryStartFormatted = $queryStart->format('Y-m-d');
-        $queryEndFormatted = $queryEnd->format('Y-m-d');
+    //     // Truyền các biến ngày tháng
+    //     $queryStartFormatted = $queryStart->format('Y-m-d');
+    //     $queryEndFormatted = $queryEnd->format('Y-m-d');
 
-        return view('admin.reports', compact(
-            'tongDoanhThu',
-            'tongDonHang',
-            'khachHangMoi',
-            'avgRating',
-            'topSellingProducts',
-            'recentOrders',
-            'selectedQuick', 
-            'queryStartFormatted', 
-            'queryEndFormatted'
-        ));
-    }
+    //     return view('admin.reports', compact(
+    //         'tongDoanhThu',
+    //         'tongDonHang',
+    //         'khachHangMoi',
+    //         'avgRating',
+    //         'topSellingProducts',
+    //         'recentOrders',
+    //         'selectedQuick', 
+    //         'queryStartFormatted', 
+    //         'queryEndFormatted'
+    //     ));
+    // }
+    public function reports(Request $request) {
+    $type = $request->input('report_type', 'doanh_thu');
+    $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+    $endDate = $request->input('end_date', Carbon::now()->endOfDay()->toDateString());
+
+    $data = $this->getReportData($type, $startDate, $endDate);
+
+    return view('admin.reports.index', compact('data', 'type', 'startDate', 'endDate'));
+}
+
+private function getReportData($type, $start, $end) {
+    $query = match($type) {
+        'don_hang' => DonHang::whereBetween('ngay_dat', [$start, $end]),
+        'doanh_thu' => DonHang::where('trang_thai', 'HOAN_THANH')->whereBetween('ngay_dat', [$start, $end]),
+        'san_pham' => DonHangChiTiet::join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+                        ->whereBetween('don_hang.ngay_dat', [$start, $end])
+                        ->selectRaw('san_pham_id, ten_sp_ghi_nhan, SUM(so_luong) as total_qty, SUM(don_hang_chi_tiet.thanh_tien) as total_amount')
+                        ->groupBy('san_pham_id', 'ten_sp_ghi_nhan'),
+        'khach_hang' => User::where('vai_tro', 'KHACH_HANG')->whereBetween('created_at', [$start, $end]),
+        default => DonHang::query(),
+    };
+    return $query->get();
+}
+
+public function exportReports(Request $request) {
+    $type = $request->input('report_type');
+    $format = $request->input('format'); // excel hoặc pdf
+    $start = $request->input('start_date');
+    $end = $request->input('end_date');
+    $data = $this->getReportData($type, $start, $end);
+
+    if ($format == 'pdf') {
+    $pdf = Pdf::loadView("admin.reports.pdf_$type", compact('data', 'start', 'end'))
+              ->setPaper('a4', 'portrait')
+              ->setOption('defaultFont', 'DejaVu Sans'); // Đảm bảo dùng font này để hiển thị tiếng Việt
+    return $pdf->download("baocao_{$type}_{$start}_to_{$end}.pdf");
+}
+
+    return Excel::download(new AdminReportExport($data, $type), "baocao_{$type}.xlsx");
+}
     
     // ... (các hàm CRUD systems giữ nguyên)
+
+
+    public function exportOrders(Request $request) 
+{
+    // Lấy dữ liệu (có thể thêm lọc theo ngày tương tự trang nhân viên)
+    $orders = DonHang::all(); 
+    $type = $request->query('type', 'excel');
+
+    if ($type == 'pdf') {
+        $pdf = Pdf::loadView('admin.exports.orders_excel', ['orders' => $orders]);
+        return $pdf->download('danh-sach-don-hang.pdf');
+    }
+
+    return Excel::download(new AdminOrderExport($orders), 'danh-sach-don-hang.xlsx');
+}
 }

@@ -79,4 +79,13 @@ class SanPham extends Model
     {
         return $this->hasMany(BinhLuan::class, 'san_pham_id')->where('duyet', 1);
     }
+    /**
+     * Khai báo mối quan hệ với bảng don_hang_chi_tiet
+     */
+    public function chiTietDonHang()
+    {
+        // Giả sử bảng don_hang_chi_tiet có cột san_pham_id liên kết với id của bảng san_pham
+        return $this->hasMany(DonHangChiTiet::class, 'san_pham_id');
+    }
+    
 }

@@ -93,7 +93,11 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::put('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
 
     Route::get('/reviews', [AdminController::class, 'reviews'])->name('reviews');
+
     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+    // Route::get('/reports/export', [AdminReportController::class, 'export'])->name('reports.export');
+    Route::get('/reports/export', [AdminController::class, 'exportReports'])->name('reports.export');
+
     Route::get('/backup', [AdminController::class, 'backup'])->name('backup');
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
 });
@@ -252,18 +256,5 @@ Route::prefix('tin-tuc')->name('news.')->group(function () {
     Route::get('/{slug}', [NewsController::class, 'show'])->name('show');
 });
 
+Route::get('/admin/orders/export', [AdminController::class, 'exportOrders'])->name('admin.orders.export');
 
-// Ví dụ: Tạo route test nhanh trong web.php
-use Illuminate\Support\Facades\Mail;
-
-Route::get('/test-mail', function () {
-    try {
-        Mail::raw('Test email from Laravel.', function ($message) {
-            $message->to('chemgiophimanh@gmail.com') // Thay thế bằng email của bạn
-                    ->subject('Kiểm tra kết nối Mail');
-        });
-        return "Email đã được gửi (kiểm tra hộp thư đến/spam).";
-    } catch (\Exception $e) {
-        return "Lỗi gửi email: " . $e->getMessage();
-    }
-});

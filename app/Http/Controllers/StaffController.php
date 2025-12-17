@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\StaffReportExport;
 use App\Models\BaiViet;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -20,6 +21,8 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use app\Exports\StaffRevenueExport;
+use App\Models\DanhMuc;
+use App\Models\DonHangChiTiet;
 
 class StaffController extends Controller
 {
@@ -507,142 +510,258 @@ public function updateProduct(Request $request, $id)
     //     ));
     // }
     
-   public function reports(Request $request)
-    {
-        // Giữ lại logic kiểm tra Staff (nếu bạn có)
-        // if ($redirect = $this->ensureStaff()) {
-        //     return $redirect;
-        // }
+//    public function reports(Request $request)
+//     {
+//         // Giữ lại logic kiểm tra Staff (nếu bạn có)
+//         // if ($redirect = $this->ensureStaff()) {
+//         //     return $redirect;
+//         // }
         
-        $currentDate = Carbon::now();
-        $queryStart = null;
-        $queryEnd = null;
-        $selectedQuick = $request->input('quick_select', 'this_month');
-        $queryStartFormatted = $request->input('start_date');
-        $queryEndFormatted = $request->input('end_date');
+//         $currentDate = Carbon::now();
+//         $queryStart = null;
+//         $queryEnd = null;
+//         $selectedQuick = $request->input('quick_select', 'this_month');
+//         $queryStartFormatted = $request->input('start_date');
+//         $queryEndFormatted = $request->input('end_date');
 
-        // --- 1. Xử lý Lọc theo Ngày/Tháng/Năm ---
-        switch ($selectedQuick) {
-            case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case '30_days': $queryStart = $currentDate->copy()->subDays(29)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case 'this_month': $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case 'this_year': $queryStart = $currentDate->copy()->startOfYear(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case 'custom':
-                if ($request->filled('start_date') && $request->filled('end_date')) {
-                    $queryStart = Carbon::parse($request->start_date)->startOfDay();
-                    $queryEnd = Carbon::parse($request->end_date)->endOfDay();
-                    $queryStartFormatted = $request->start_date;
-                    $queryEndFormatted = $request->end_date;
-                }
-                break;
-        }
+//         // --- 1. Xử lý Lọc theo Ngày/Tháng/Năm ---
+//         switch ($selectedQuick) {
+//             case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+//             case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+//             case '30_days': $queryStart = $currentDate->copy()->subDays(29)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+//             case 'this_month': $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+//             case 'this_year': $queryStart = $currentDate->copy()->startOfYear(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+//             case 'custom':
+//                 if ($request->filled('start_date') && $request->filled('end_date')) {
+//                     $queryStart = Carbon::parse($request->start_date)->startOfDay();
+//                     $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+//                     $queryStartFormatted = $request->start_date;
+//                     $queryEndFormatted = $request->end_date;
+//                 }
+//                 break;
+//         }
 
-        if (is_null($queryStart) || is_null($queryEnd)) {
-            $queryStart = $currentDate->copy()->startOfMonth();
-            $queryEnd = $currentDate->copy()->endOfDay();
-            $selectedQuick = 'this_month';
-        }
+//         if (is_null($queryStart) || is_null($queryEnd)) {
+//             $queryStart = $currentDate->copy()->startOfMonth();
+//             $queryEnd = $currentDate->copy()->endOfDay();
+//             $selectedQuick = 'this_month';
+//         }
         
-        $queryStartFormatted = $queryStart->format('Y-m-d');
-        $queryEndFormatted = $queryEnd->format('Y-m-d');
+//         $queryStartFormatted = $queryStart->format('Y-m-d');
+//         $queryEndFormatted = $queryEnd->format('Y-m-d');
 
 
-        // --- 2. Tính toán thống kê Tổng quát ---
-        $tongDonHangHoanThanh = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
-                                      ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-                                      ->count();
+//         // --- 2. Tính toán thống kê Tổng quát ---
+//         $tongDonHangHoanThanh = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
+//                                       ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+//                                       ->count();
                                       
-        $tongDoanhThu = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
-                              ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-                              ->sum('thanh_tien');
+//         $tongDoanhThu = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
+//                               ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+//                               ->sum('thanh_tien');
         
-        $tongDonHang = \App\Models\DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
+//         $tongDonHang = \App\Models\DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
         
-        $khachHangMoi = \App\Models\User::where('vai_tro', 'KHACH_HANG') // Dùng NguoiDung nếu User không phải là Model của bạn
-                            ->whereBetween('created_at', [$queryStart, $queryEnd])
-                            ->count();
+//         $khachHangMoi = \App\Models\User::where('vai_tro', 'KHACH_HANG') // Dùng NguoiDung nếu User không phải là Model của bạn
+//                             ->whereBetween('created_at', [$queryStart, $queryEnd])
+//                             ->count();
         
-        $donDangXuLy = \App\Models\DonHang::where('trang_thai', 'DANG_XU_LY')
-                            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-                            ->count();
+//         $donDangXuLy = \App\Models\DonHang::where('trang_thai', 'DANG_XU_LY')
+//                             ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+//                             ->count();
 
-        // --- 3. Thống kê Chuyên sâu ---
-        $completedOrderIds = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
-                                    ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-                                    ->pluck('id');
+//         // --- 3. Thống kê Chuyên sâu ---
+//         $completedOrderIds = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
+//                                     ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+//                                     ->pluck('id');
 
-        // BÁN CHẠY & BÁN CHẬM (Lấy Top 5 và Bottom 5)
-        $productSales = \App\Models\DonHangChiTiet::select(
-            'san_pham_id', 
-            DB::raw('SUM(so_luong) as tong_so_luong_ban'), 
-            DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
-        )
-            ->whereIn('don_hang_id', $completedOrderIds)
-            ->groupBy('san_pham_id')
-            ->orderBy('tong_so_luong_ban', 'desc')
-            ->with(['sanPham' => function($q) { $q->withTrashed(); }]) // Giả định quan hệ sanPham() tồn tại
-            ->get()
-            ->map(function($item) {
-                $item->ten = $item->sanPham->ten ?? 'Sản phẩm đã xóa/Không rõ';
-                return $item;
-            });
+//         // BÁN CHẠY & BÁN CHẬM (Lấy Top 5 và Bottom 5)
+//         $productSales = \App\Models\DonHangChiTiet::select(
+//             'san_pham_id', 
+//             DB::raw('SUM(so_luong) as tong_so_luong_ban'), 
+//             DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
+//         )
+//             ->whereIn('don_hang_id', $completedOrderIds)
+//             ->groupBy('san_pham_id')
+//             ->orderBy('tong_so_luong_ban', 'desc')
+//             ->with(['sanPham' => function($q) { $q->withTrashed(); }]) // Giả định quan hệ sanPham() tồn tại
+//             ->get()
+//             ->map(function($item) {
+//                 $item->ten = $item->sanPham->ten ?? 'Sản phẩm đã xóa/Không rõ';
+//                 return $item;
+//             });
 
-        $topSellingProducts = $productSales->take(5);
-        $bottomSellingProducts = $productSales->count() > 5 ? $productSales->sortBy('tong_so_luong_ban')->take(5) : collect();
+//         $topSellingProducts = $productSales->take(5);
+//         $bottomSellingProducts = $productSales->count() > 5 ? $productSales->sortBy('tong_so_luong_ban')->take(5) : collect();
 
-        // DOANH THU THEO DÒNG MÁY (DANH MỤC) - FIX: SỬ DỤNG BẢNG TRUNG GIAN san_pham_danh_muc
-        $revenueByCategory = \App\Models\DonHangChiTiet::select(
-            'danh_muc.ten AS ten_danh_muc', 
-            DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
-        )
-            ->join('san_pham_danh_muc', 'don_hang_chi_tiet.san_pham_id', '=', 'san_pham_danh_muc.san_pham_id')
-            ->join('danh_muc', 'san_pham_danh_muc.danh_muc_id', '=', 'danh_muc.id')
-            ->whereIn('don_hang_id', $completedOrderIds)
-            // Phải Group by danh_muc.ten (chỉ lấy 1 danh mục/sản phẩm nếu có nhiều)
-            ->groupBy('danh_muc.ten') 
-            ->orderBy('tong_doanh_thu', 'desc')
-            ->get();
+//         // DOANH THU THEO DÒNG MÁY (DANH MỤC) - FIX: SỬ DỤNG BẢNG TRUNG GIAN san_pham_danh_muc
+//         $revenueByCategory = \App\Models\DonHangChiTiet::select(
+//             'danh_muc.ten AS ten_danh_muc', 
+//             DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
+//         )
+//             ->join('san_pham_danh_muc', 'don_hang_chi_tiet.san_pham_id', '=', 'san_pham_danh_muc.san_pham_id')
+//             ->join('danh_muc', 'san_pham_danh_muc.danh_muc_id', '=', 'danh_muc.id')
+//             ->whereIn('don_hang_id', $completedOrderIds)
+//             // Phải Group by danh_muc.ten (chỉ lấy 1 danh mục/sản phẩm nếu có nhiều)
+//             ->groupBy('danh_muc.ten') 
+//             ->orderBy('tong_doanh_thu', 'desc')
+//             ->get();
             
-        // SẢN PHẨM TỒN KHO NHIỀU NHẤT (Biến thể)
-        $topStockProducts = \App\Models\BienTheSanPham::select(
-            'bien_the_san_pham.id', 
-            'bien_the_san_pham.sku', 
-            'bien_the_san_pham.ton_kho', 
-            'san_pham.ten AS ten_san_pham',
-            'bien_the_san_pham.mau_sac',
-            'bien_the_san_pham.dung_luong_gb'
-        )
-            ->join('san_pham', 'bien_the_san_pham.san_pham_id', '=', 'san_pham.id')
-            ->orderBy('bien_the_san_pham.ton_kho', 'desc')
-            ->limit(5)
-            ->get();
+//         // SẢN PHẨM TỒN KHO NHIỀU NHẤT (Biến thể)
+//         $topStockProducts = \App\Models\BienTheSanPham::select(
+//             'bien_the_san_pham.id', 
+//             'bien_the_san_pham.sku', 
+//             'bien_the_san_pham.ton_kho', 
+//             'san_pham.ten AS ten_san_pham',
+//             'bien_the_san_pham.mau_sac',
+//             'bien_the_san_pham.dung_luong_gb'
+//         )
+//             ->join('san_pham', 'bien_the_san_pham.san_pham_id', '=', 'san_pham.id')
+//             ->orderBy('bien_the_san_pham.ton_kho', 'desc')
+//             ->limit(5)
+//             ->get();
 
-        // SỐ LƯỢNG BÁN THEO TỪNG MẪU MÁY (BIẾN THỂ)
-        $salesByVariant = \App\Models\DonHangChiTiet::select(
-            'don_hang_chi_tiet.bien_the_id', // Thay bien_the_san_pham_id bằng bien_the_id
-            DB::raw('SUM(don_hang_chi_tiet.so_luong) as tong_so_luong_ban'), 
-            'san_pham.ten AS ten_san_pham',
-            'bien_the_san_pham.sku',
-            'bien_the_san_pham.mau_sac',
-            'bien_the_san_pham.dung_luong_gb'
-        )
-            ->join('bien_the_san_pham', 'don_hang_chi_tiet.bien_the_id', '=', 'bien_the_san_pham.id') // Sửa join key
-            ->join('san_pham', 'bien_the_san_pham.san_pham_id', '=', 'san_pham.id')
-            ->whereIn('don_hang_id', $completedOrderIds)
-            ->groupBy('don_hang_chi_tiet.bien_the_id', 'san_pham.ten', 'bien_the_san_pham.sku', 'bien_the_san_pham.mau_sac', 'bien_the_san_pham.dung_luong_gb')
-            ->orderBy('tong_so_luong_ban', 'desc')
-            ->limit(10) // Lấy top 10 biến thể bán chạy nhất
-            ->get();
+//         // SỐ LƯỢNG BÁN THEO TỪNG MẪU MÁY (BIẾN THỂ)
+//         $salesByVariant = \App\Models\DonHangChiTiet::select(
+//             'don_hang_chi_tiet.bien_the_id', // Thay bien_the_san_pham_id bằng bien_the_id
+//             DB::raw('SUM(don_hang_chi_tiet.so_luong) as tong_so_luong_ban'), 
+//             'san_pham.ten AS ten_san_pham',
+//             'bien_the_san_pham.sku',
+//             'bien_the_san_pham.mau_sac',
+//             'bien_the_san_pham.dung_luong_gb'
+//         )
+//             ->join('bien_the_san_pham', 'don_hang_chi_tiet.bien_the_id', '=', 'bien_the_san_pham.id') // Sửa join key
+//             ->join('san_pham', 'bien_the_san_pham.san_pham_id', '=', 'san_pham.id')
+//             ->whereIn('don_hang_id', $completedOrderIds)
+//             ->groupBy('don_hang_chi_tiet.bien_the_id', 'san_pham.ten', 'bien_the_san_pham.sku', 'bien_the_san_pham.mau_sac', 'bien_the_san_pham.dung_luong_gb')
+//             ->orderBy('tong_so_luong_ban', 'desc')
+//             ->limit(10) // Lấy top 10 biến thể bán chạy nhất
+//             ->get();
 
 
-        return view('staff.reports', compact(
-            'tongDoanhThu', 'tongDonHang', 'khachHangMoi', 'donDangXuLy', 'tongDonHangHoanThanh',
-            'topSellingProducts', 'bottomSellingProducts', 'revenueByCategory', 'topStockProducts', 'salesByVariant',
-            'selectedQuick', 'queryStartFormatted', 'queryEndFormatted'
-        ));
+//         return view('staff.reports', compact(
+//             'tongDoanhThu', 'tongDonHang', 'khachHangMoi', 'donDangXuLy', 'tongDonHangHoanThanh',
+//             'topSellingProducts', 'bottomSellingProducts', 'revenueByCategory', 'topStockProducts', 'salesByVariant',
+//             'selectedQuick', 'queryStartFormatted', 'queryEndFormatted'
+//         ));
+//     }
+ // app/Http/Controllers/StaffController.php
+
+// app/Http/Controllers/StaffController.php
+
+public function reports(Request $request)
+{
+    // Kiểm tra quyền nhân viên (Thay thế ensureAdminOrStaff bị lỗi)
+    if (!auth()->check() || (auth()->user()->vai_tro !== 'QUAN_TRI' && auth()->user()->vai_tro !== 'NHAN_VIEN')) {
+        return redirect()->route('login');
     }
 
+    $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+    $endDate = $request->end_date ?? now()->format('Y-m-d');
+    $reportType = $request->report_type ?? 'doanh_thu'; // Loại báo cáo mặc định
+
+    $data = collect();
+
+    // Xử lý lấy dữ liệu dựa trên loại báo cáo được chọn
+    switch ($reportType) {
+        case 'doanh_thu':
+            $data = \App\Models\DonHang::whereBetween('ngay_dat', [$startDate, $endDate])
+                ->where('trang_thai', 'HOAN_THANH')->get();
+            break;
+        case 'ban_chay':
+            $data = \App\Models\DonHangChiTiet::select('ten_sp_ghi_nhan', \DB::raw('SUM(so_luong) as total_qty'))
+                ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+                ->whereBetween('don_hang.ngay_dat', [$startDate, $endDate])
+                ->groupBy('ten_sp_ghi_nhan')->orderByDesc('total_qty')->take(5)->get();
+            break;
+        case 'ban_cham':
+            $threeMonthsAgo = now()->subMonths(3);
+            $data = \App\Models\SanPham::withSum(['chiTietDonHang as total_sold' => function($q) use ($threeMonthsAgo) {
+                $q->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+                  ->where('don_hang.ngay_dat', '>=', $threeMonthsAgo);
+            }], 'so_luong')->having('total_sold', '<', 5)->orHavingNull('total_sold')->take(5)->get();
+            break;
+        case 'ton_kho':
+            $data = \App\Models\BienTheSanPham::with('sanPham')->orderByDesc('ton_kho')->take(10)->get();
+            break;
+    }
+
+    return view('staff.reports.index', compact('data', 'startDate', 'endDate', 'reportType'));
+}
+ public function exportReport(Request $request)
+{
+    $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+    $endDate = $request->end_date ?? now()->format('Y-m-d');
+    $reportType = $request->report_type ?? 'doanh_thu';
+    $format = $request->format ?? 'excel';
+
+    // 1. Lấy dữ liệu Tổng quan (Dùng chung cho cả Excel và PDF)
+    $doanhThu = \App\Models\DonHang::whereBetween('ngay_dat', [$startDate, $endDate])
+                ->where('trang_thai', 'HOAN_THANH')->sum('thanh_tien');
+    $tongDonHang = \App\Models\DonHang::whereBetween('ngay_dat', [$startDate, $endDate])->count();
+    $donDangXuLy = \App\Models\DonHang::where('trang_thai', 'DANG_XU_LY')->count();
+    $tongKhachHang = \App\Models\User::where('vai_tro', 'KHACH_HANG')->count();
+
+    // 2. Lấy dữ liệu chi tiết và gán vào đúng biến để View PDF không bị lỗi Undefined
+    $dataDetails = collect();
+    $banChay = collect();
+    $banCham = collect();
+    $tonKhoNhieu = collect();
+
+    if ($reportType == 'doanh_thu') {
+        $dataDetails = \App\Models\DonHang::whereBetween('ngay_dat', [$startDate, $endDate])
+            ->where('trang_thai', 'HOAN_THANH')->get();
+    } elseif ($reportType == 'ban_chay') {
+        $banChay = \App\Models\DonHangChiTiet::select('ten_sp_ghi_nhan', \DB::raw('SUM(so_luong) as total_qty'))
+            ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+            ->whereBetween('don_hang.ngay_dat', [$startDate, $endDate])
+            ->groupBy('ten_sp_ghi_nhan')->orderByDesc('total_qty')->take(5)->get();
+        $dataDetails = $banChay;
+    } elseif ($reportType == 'ban_cham') {
+        $threeMonthsAgo = now()->subMonths(3);
+        $banCham = \App\Models\SanPham::withSum(['chiTietDonHang as total_sold' => function($q) use ($threeMonthsAgo) {
+            $q->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+              ->where('don_hang.ngay_dat', '>=', $threeMonthsAgo);
+        }], 'so_luong')->having('total_sold', '<', 5)->orHavingNull('total_sold')->take(5)->get();
+        $dataDetails = $banCham;
+    } elseif ($reportType == 'ton_kho') {
+        $tonKhoNhieu = \App\Models\BienTheSanPham::with('sanPham')->orderByDesc('ton_kho')->take(10)->get();
+        $dataDetails = $tonKhoNhieu;
+    }
+
+    // Gộp tất cả vào mảng truyền ra View
+    $allData = [
+        'startDate' => $startDate,
+        'endDate' => $endDate,
+        'reportType' => $reportType,
+        'doanhThu' => $doanhThu,
+        'tongDonHang' => $tongDonHang,
+        'donDangXuLy' => $donDangXuLy,
+        'tongKhachHang' => $tongKhachHang,
+        'dataDetails' => $dataDetails, // Dùng cho Excel
+        'banChay' => $banChay,         // Dùng cho PDF
+        'banCham' => $banCham,         // Dùng cho PDF
+        'tonKhoNhieu' => $tonKhoNhieu   // Dùng cho PDF
+    ];
+
+    // 3. Xuất file
+    if ($format == 'excel') {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\StaffReportExport($allData), 
+            "Bao_cao_nhan_vien_{$startDate}.xlsx"
+        );
+    }
+
+    if ($format == 'pdf') {
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('staff.reports.export_pdf', $allData)
+        ->setPaper('a4', 'portrait')
+        ->setOption('isHtml5ParserEnabled', true)
+        ->setOption('isRemoteEnabled', true)
+        ->setOption('defaultFont', 'DejaVu Sans'); // Ép buộc sử dụng font Unicode
+    
+    return $pdf->download("Bao_cao_nhan_vien_{$startDate}.pdf");
+    }
+}
     // =========================================================
     // QUẢN LÝ TIN CÔNG NGHỆ (MỚI)
     // =========================================================
@@ -1076,71 +1195,71 @@ public function updateProduct(Request $request, $id)
     /**
      * Xử lý xuất báo cáo ra file Excel hoặc PDF.
      */
-    public function exportReport(Request $request)
-    {
-        if ($redirect = $this->ensureStaff()) {
-            return $redirect;
-        }
+    // public function exportReport(Request $request)
+    // {
+    //     if ($redirect = $this->ensureStaff()) {
+    //         return $redirect;
+    //     }
 
-        // 1. Tái sử dụng logic lọc thời gian
-        $currentDate = Carbon::now();
-        $queryStart = null;
-        $queryEnd = null;
-        $selectedQuick = $request->input('quick_select', 'this_month');
+    //     // 1. Tái sử dụng logic lọc thời gian
+    //     $currentDate = Carbon::now();
+    //     $queryStart = null;
+    //     $queryEnd = null;
+    //     $selectedQuick = $request->input('quick_select', 'this_month');
         
-        // --- Logic Tính Toán Ngày ---
-        switch ($selectedQuick) {
-            case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case '30_days': $queryStart = $currentDate->copy()->subDays(29)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case 'this_month': $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case 'this_year': $queryStart = $currentDate->copy()->startOfYear(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-            case 'custom':
-                if ($request->filled('start_date') && $request->filled('end_date')) {
-                    $queryStart = Carbon::parse($request->start_date)->startOfDay();
-                    $queryEnd = Carbon::parse($request->end_date)->endOfDay();
-                }
-                break;
-            default: $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
-        }
+    //     // --- Logic Tính Toán Ngày ---
+    //     switch ($selectedQuick) {
+    //         case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case '30_days': $queryStart = $currentDate->copy()->subDays(29)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case 'this_month': $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case 'this_year': $queryStart = $currentDate->copy()->startOfYear(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case 'custom':
+    //             if ($request->filled('start_date') && $request->filled('end_date')) {
+    //                 $queryStart = Carbon::parse($request->start_date)->startOfDay();
+    //                 $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+    //             }
+    //             break;
+    //         default: $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //     }
 
-        if (is_null($queryStart) || is_null($queryEnd)) {
-            $queryStart = $currentDate->copy()->startOfMonth();
-            $queryEnd = $currentDate->copy()->endOfDay();
-        }
+    //     if (is_null($queryStart) || is_null($queryEnd)) {
+    //         $queryStart = $currentDate->copy()->startOfMonth();
+    //         $queryEnd = $currentDate->copy()->endOfDay();
+    //     }
         
-        // 2. LẤY DỮ LIỆU ĐỂ XUẤT (Chỉ đơn hàng HOÀN THÀNH)
-        $ordersToReport = DonHang::with(['nguoiDung', 'chiTiet.sanPham'])
-                                ->where('trang_thai', 'HOAN_THANH')
-                                ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-                                ->get();
+    //     // 2. LẤY DỮ LIỆU ĐỂ XUẤT (Chỉ đơn hàng HOÀN THÀNH)
+    //     $ordersToReport = DonHang::with(['nguoiDung', 'chiTiet.sanPham'])
+    //                             ->where('trang_thai', 'HOAN_THANH')
+    //                             ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+    //                             ->get();
                                 
-        // 3. XỬ LÝ EXPORT
-        $dateRange = $queryStart->format('Ymd') . '_to_' . $queryEnd->format('Ymd');
-        $exportType = $request->input('type', 'excel'); 
+    //     // 3. XỬ LÝ EXPORT
+    //     $dateRange = $queryStart->format('Ymd') . '_to_' . $queryEnd->format('Ymd');
+    //     $exportType = $request->input('type', 'excel'); 
         
-        if ($exportType === 'excel') {
-            $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.xlsx';
+    //     if ($exportType === 'excel') {
+    //         $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.xlsx';
             
-            // SỬ DỤNG LỚP EXPORT VỪA TẠO
-            return \Maatwebsite\Excel\Facades\Excel::download(
-                new \App\Exports\StaffRevenueExport($ordersToReport, $queryStart, $queryEnd), 
-                $fileName
-            );
-        } elseif ($exportType === 'pdf') {
-            $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.pdf';
+    //         // SỬ DỤNG LỚP EXPORT VỪA TẠO
+    //         return \Maatwebsite\Excel\Facades\Excel::download(
+    //             new \App\Exports\StaffRevenueExport($ordersToReport, $queryStart, $queryEnd), 
+    //             $fileName
+    //         );
+    //     } elseif ($exportType === 'pdf') {
+    //         $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.pdf';
             
-            // SỬ DỤNG LỚP PDF VỪA TẠO
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.staff_revenue_pdf', [
-                'ordersToReport' => $ordersToReport,
-                'startDate' => $queryStart,
-                'endDate' => $queryEnd,
-            ]);
-            // Nếu có lỗi, thử setting font cho PDF
-            // $pdf->setOptions(['defaultFont' => 'sans-serif']); 
-            return $pdf->download($fileName);
-        }
+    //         // SỬ DỤNG LỚP PDF VỪA TẠO
+    //         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.staff_revenue_pdf', [
+    //             'ordersToReport' => $ordersToReport,
+    //             'startDate' => $queryStart,
+    //             'endDate' => $queryEnd,
+    //         ]);
+    //         // Nếu có lỗi, thử setting font cho PDF
+    //         // $pdf->setOptions(['defaultFont' => 'sans-serif']); 
+    //         return $pdf->download($fileName);
+    //     }
 
-        return back()->with('error', 'Định dạng xuất file không hợp lệ.');
-    }
+    //     return back()->with('error', 'Định dạng xuất file không hợp lệ.');
+    // }
 }
