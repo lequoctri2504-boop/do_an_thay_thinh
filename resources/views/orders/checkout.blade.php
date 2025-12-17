@@ -39,9 +39,15 @@
                             <input type="tel" name="sdt_nguoi_nhan" class="form-control @error('sdt_nguoi_nhan') is-invalid @enderror"
                                 value="{{ old('sdt_nguoi_nhan', $user->sdt) }}" placeholder="0xxx xxx xxx" required>
                         </div>
+                        
+                        {{-- FIX: Thêm trường email KHÔNG bị disabled để giá trị được gửi đi --}}
                         <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" class="form-control" value="{{ $user->email }}" readonly disabled>
+                            <label>Email xác nhận đơn hàng <span class="required">*</span></label>
+                            <input type="email" name="email_khach" class="form-control @error('email_khach') is-invalid @enderror" 
+                                value="{{ old('email_khach', $user->email) }}" placeholder="Nhập email của bạn" required>
+                            @error('email_khach')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
 
@@ -78,7 +84,7 @@
                             </div>
                         </label>
 
-                        {{-- Thanh toán ZaloPay --}}
+                        {{-- Thanh toán VNPAY --}}
                         <label class="payment-option">
                             <input class="form-check-input" type="radio" name="phuong_thuc_tt" id="vnpay" value="VNPAY">
                             <div class="payment-content">

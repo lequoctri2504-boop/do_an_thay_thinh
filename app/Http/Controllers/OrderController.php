@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderConfirmationMail;
 use App\Models\GioHang;
 use App\Models\GioHangChiTiet;
 use App\Models\DonHang;
@@ -16,6 +17,8 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
@@ -121,6 +124,122 @@ class OrderController extends Controller
     /**
      * Xử lý đặt hàng
      */
+    // public function place(Request $request)
+    // {
+    //     if (!Auth::check()) {
+    //         return redirect()->route('login')->with('error', 'Vui lòng đăng nhập!');
+    //     }
+        
+    //     $request->validate([
+    //         'ten_nguoi_nhan' => 'required|string|max:191',
+    //         'sdt_nguoi_nhan' => 'required|string|max:32',
+    //         'dia_chi_giao' => 'required|string',
+    //         'phuong_thuc_tt' => 'required|in:COD,CHUYEN_KHOAN,VNPAY',
+    //         'ghi_chu' => 'nullable|string|max:500'
+    //     ], [
+    //         'ten_nguoi_nhan.required' => 'Vui lòng nhập tên người nhận',
+    //         'sdt_nguoi_nhan.required' => 'Vui lòng nhập số điện thoại',
+    //         'dia_chi_giao.required' => 'Vui lòng nhập địa chỉ giao hàng',
+    //         'phuong_thuc_tt.required' => 'Vui lòng chọn phương thức thanh toán'
+    //     ]);
+        
+    //     DB::beginTransaction();
+    //     try {
+    //         // Lấy giỏ hàng
+    //         $cart = GioHang::where('nguoi_dung_id', Auth::id())->first();
+            
+    //         if (!$cart) {
+    //             throw new \Exception('Giỏ hàng không tồn tại!');
+    //         }
+            
+    //         $cartItems = GioHangChiTiet::with(['bienThe.sanPham'])
+    //             ->where('gio_hang_id', $cart->id)
+    //             ->get();
+            
+    //         if ($cartItems->isEmpty()) {
+    //             throw new \Exception('Giỏ hàng trống!');
+    //         }
+            
+    //         // Kiểm tra tồn kho
+    //         foreach ($cartItems as $item) {
+    //             if ($item->bienThe->ton_kho < $item->so_luong) {
+    //                 throw new \Exception("Sản phẩm {$item->bienThe->sanPham->ten} không đủ số lượng trong kho!");
+    //             }
+    //         }
+            
+    //         // Tính tổng tiền
+    //         $tongTien = $cartItems->sum(function($item) {
+    //             return $item->so_luong * $item->bienThe->gia;
+    //         });
+            
+    //         // LẤY GIẢM GIÁ TỪ SESSION
+    //         $giamGia = Session::get('discount_amount', 0); 
+
+    //         $phiVanChuyen = $tongTien >= 500000 ? 0 : 30000;
+    //         $thanhTien = $tongTien - $giamGia + $phiVanChuyen; // <-- FINAL CALCULATION
+            
+    //         // Tạo mã đơn hàng
+    //         $maDonHang = 'DH' . date('YmdHis') . rand(1000, 9999);
+            
+    //         // Tạo đơn hàng
+    //         $donHang = new DonHang();
+    //         $donHang->ma = $maDonHang;
+    //         $donHang->nguoi_dung_id = Auth::id();
+    //         $donHang->trang_thai = 'DANG_XU_LY';
+    //         $donHang->tong_tien = $tongTien;
+    //         $donHang->giam_gia = $giamGia; // <-- SAVE DISCOUNT
+    //         $donHang->phi_van_chuyen = $phiVanChuyen;
+    //         $donHang->thanh_tien = $thanhTien;
+    //         $donHang->ten_nguoi_nhan = $request->ten_nguoi_nhan;
+    //         $donHang->sdt_nguoi_nhan = $request->sdt_nguoi_nhan;
+    //         $donHang->dia_chi_giao = $request->dia_chi_giao;
+    //         $donHang->phuong_thuc_tt = $request->phuong_thuc_tt;
+    //         $donHang->trang_thai_tt = $request->phuong_thuc_tt == 'COD' ? 'CHUA_TT' : 'CHUA_TT';
+    //         $donHang->ngay_dat = now();
+    //         $donHang->ghi_chu = $request->ghi_chu;
+    //         $donHang->save();
+            
+    //         // Tạo chi tiết đơn hàng và cập nhật tồn kho
+    //         foreach ($cartItems as $item) {
+    //             // Thêm chi tiết đơn hàng
+    //             $chiTiet = new DonHangChiTiet();
+    //             $chiTiet->don_hang_id = $donHang->id;
+    //             $chiTiet->san_pham_id = $item->bienThe->san_pham_id;
+    //             $chiTiet->bien_the_id = $item->bienThe->id;
+    //             $chiTiet->ten_sp_ghi_nhan = $item->bienThe->sanPham->ten;
+    //             $chiTiet->sku_ghi_nhan = $item->bienThe->sku;
+    //             $chiTiet->gia = $item->bienThe->gia;
+    //             $chiTiet->so_luong = $item->so_luong;
+    //             $chiTiet->thanh_tien = $item->so_luong * $item->bienThe->gia;
+    //             $chiTiet->save();
+                
+    //             // Giảm tồn kho
+    //             $item->bienThe->ton_kho = $item->bienThe->ton_kho - $item->so_luong;
+    //             $item->bienThe->save();
+    //         }
+            
+    //         // Xóa giỏ hàng VÀ KHUYẾN MÃI TRONG SESSION
+    //         GioHangChiTiet::where('gio_hang_id', $cart->id)->delete();
+    //         Session::forget(['cart_count', 'discount_code', 'discount_amount']); // <-- CLEAR DISCOUNT
+
+            
+    //         DB::commit();
+            
+    //         // Nếu thanh toán ZaloPay, chuyển đến trang thanh toán
+    //         if ($request->phuong_thuc_tt == 'VNPAY') {
+    //             return redirect()->route('payment.zalopay.create', ['order_id' => $donHang->id]);
+    //         }
+            
+    //         return redirect()->route('orders.show', $donHang->id)
+    //             ->with('success', 'Đặt hàng thành công! Mã đơn hàng: ' . $maDonHang);
+            
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return redirect()->back()
+    //             ->withInput()
+    //             ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+    //     }
+    // }
     public function place(Request $request)
     {
         if (!Auth::check()) {
@@ -132,13 +251,17 @@ class OrderController extends Controller
             'sdt_nguoi_nhan' => 'required|string|max:32',
             'dia_chi_giao' => 'required|string',
             'phuong_thuc_tt' => 'required|in:COD,CHUYEN_KHOAN,VNPAY',
+            'email_khach' => 'required|email|max:191', // <-- BẮT BUỘC THÊM FIELD EMAIL TỪ FORM
             'ghi_chu' => 'nullable|string|max:500'
         ], [
             'ten_nguoi_nhan.required' => 'Vui lòng nhập tên người nhận',
             'sdt_nguoi_nhan.required' => 'Vui lòng nhập số điện thoại',
             'dia_chi_giao.required' => 'Vui lòng nhập địa chỉ giao hàng',
-            'phuong_thuc_tt.required' => 'Vui lòng chọn phương thức thanh toán'
+            'phuong_thuc_tt.required' => 'Vui lòng chọn phương thức thanh toán',
+            'email_khach.required' => 'Vui lòng cung cấp email để nhận xác nhận đơn hàng'
         ]);
+        
+        $customerEmail = $request->input('email_khach'); // Lấy email người nhận
         
         DB::beginTransaction();
         try {
@@ -184,7 +307,7 @@ class OrderController extends Controller
             $donHang->nguoi_dung_id = Auth::id();
             $donHang->trang_thai = 'DANG_XU_LY';
             $donHang->tong_tien = $tongTien;
-            $donHang->giam_gia = $giamGia; // <-- SAVE DISCOUNT
+            $donHang->giam_gia = $giamGia; 
             $donHang->phi_van_chuyen = $phiVanChuyen;
             $donHang->thanh_tien = $thanhTien;
             $donHang->ten_nguoi_nhan = $request->ten_nguoi_nhan;
@@ -194,6 +317,7 @@ class OrderController extends Controller
             $donHang->trang_thai_tt = $request->phuong_thuc_tt == 'COD' ? 'CHUA_TT' : 'CHUA_TT';
             $donHang->ngay_dat = now();
             $donHang->ghi_chu = $request->ghi_chu;
+            $donHang->email_nguoi_nhan = $customerEmail; // <<< BỔ SUNG EMAIL VÀO ĐƠN HÀNG >>>
             $donHang->save();
             
             // Tạo chi tiết đơn hàng và cập nhật tồn kho
@@ -222,16 +346,32 @@ class OrderController extends Controller
             
             DB::commit();
             
-            // Nếu thanh toán ZaloPay, chuyển đến trang thanh toán
+            // ==========================================================
+            // FIX: THÊM LỆNH GỬI EMAIL SAU KHI DB::COMMIT() THÀNH CÔNG
+            // ==========================================================
+            
+            if ($customerEmail) {
+                // Tải lại chi tiết đơn hàng để Blade template có thể truy cập
+                $donHang->load('chiTiet'); 
+                
+                // Gửi mail ngay lập tức
+                Mail::to($customerEmail)->send(new OrderConfirmationMail($donHang));
+                
+                // Nếu muốn dùng Queue (cần chạy php artisan queue:work)
+                // Mail::to($customerEmail)->queue(new OrderConfirmationMail($donHang));
+            }
+
+            // Nếu thanh toán VNPAY, chuyển đến trang thanh toán
             if ($request->phuong_thuc_tt == 'VNPAY') {
                 return redirect()->route('payment.zalopay.create', ['order_id' => $donHang->id]);
             }
             
             return redirect()->route('orders.show', $donHang->id)
-                ->with('success', 'Đặt hàng thành công! Mã đơn hàng: ' . $maDonHang);
+                ->with('success', 'Đặt hàng thành công! Mã đơn hàng: ' . $maDonHang . '. Vui lòng kiểm tra email xác nhận.');
             
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Lỗi xử lý đặt hàng: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
@@ -608,4 +748,118 @@ class OrderController extends Controller
         
         return response()->json($result);
     }
+
+
+    /**
+     * Xử lý quá trình thanh toán, tạo đơn hàng và gửi email.
+     */
+    // public function processCheckout(Request $request)
+    // {
+    //     // 0. Validation (Thêm các rule validation cần thiết)
+    //     $request->validate([
+    //         'ten_nguoi_nhan' => 'required|string|max:255',
+    //         'sdt_nguoi_nhan' => 'required|string|max:15',
+    //         'dia_chi_giao' => 'required|string',
+    //         'phuong_thuc_tt' => 'required|string',
+    //         'email_khach' => 'required|email', // Yêu cầu email để gửi xác nhận
+    //     ]);
+        
+    //     // 1. Dữ liệu giả định Giỏ hàng (Bạn cần thay thế bằng logic lấy giỏ hàng thực tế)
+    //     // GIẢ ĐỊNH: Lấy giỏ hàng từ Session
+    //     $cartItems = session('cart', []); 
+    //     if (empty($cartItems)) {
+    //         return redirect()->route('cart.index')->with('error', 'Giỏ hàng của bạn đang trống.');
+    //     }
+
+    //     $user = auth()->check() ? auth()->user() : null; // Người dùng đã đăng nhập
+        
+    //     // Tính toán tổng tiền
+    //     $totalAmount = 0;
+    //     foreach ($cartItems as $item) {
+    //         // Giả định $item có 'price' và 'quantity'
+    //         $totalAmount += $item['price'] * $item['quantity'];
+    //     }
+        
+    //     $discount = $request->input('giam_gia', 0); // Giả định có trường giam_gia
+    //     $finalAmount = $totalAmount - $discount;
+    //     $customerEmail = $request->input('email_khach'); // Lấy email từ form
+
+    //     // Bắt đầu Transaction CSDL
+    //     DB::beginTransaction();
+    //     try {
+    //         // 2. TẠO ĐƠN HÀNG (DonHang)
+    //         $order = DonHang::create([
+    //             'nguoi_dung_id' => $user->id ?? null,
+    //             'ma' => 'DH-' . Str::upper(Str::random(8)), // Tạo mã đơn hàng độc lập
+    //             'ten_nguoi_nhan' => $request->input('ten_nguoi_nhan'),
+    //             'sdt_nguoi_nhan' => $request->input('sdt_nguoi_nhan'),
+    //             'dia_chi_giao' => $request->input('dia_chi_giao'),
+    //             'tong_tien' => $totalAmount,
+    //             'giam_gia' => $discount,
+    //             'thanh_tien' => $finalAmount,
+    //             'phuong_thuc_tt' => $request->input('phuong_thuc_tt'),
+    //             'trang_thai' => 'DANG_XU_LY', 
+    //             'ngay_dat' => Carbon::now(),
+    //         ]);
+            
+    //         // 3. TẠO CHI TIẾT ĐƠN HÀNG (DonHangChiTiet) VÀ CẬP NHẬT TỒN KHO
+    //         foreach ($cartItems as $item) {
+    //             // $item['bien_the_id'], $item['quantity'], $item['price'] (giả định)
+    //             $variant = BienTheSanPham::with('sanPham')->find($item['bien_the_id']);
+
+    //             if (!$variant || $variant->ton_kho < $item['quantity']) {
+    //                 DB::rollBack();
+    //                 return back()->with('error', 'Sản phẩm ' . $variant->sanPham->ten . ' không đủ số lượng trong kho.')
+    //                              ->withInput();
+    //             }
+                
+    //             DonHangChiTiet::create([
+    //                 'don_hang_id' => $order->id,
+    //                 'san_pham_id' => $variant->san_pham_id,
+    //                 'bien_the_id' => $variant->id,
+    //                 'so_luong' => $item['quantity'],
+    //                 'don_gia' => $item['price'],
+    //                 'thanh_tien' => $item['price'] * $item['quantity'],
+                    
+    //                 // Lưu snapshot tên sản phẩm và SKU
+    //                 'ten_sp_ghi_nhan' => $variant->sanPham->ten . ' - ' . $variant->mau_sac . ($variant->dung_luong_gb ? ' / ' . $variant->dung_luong_gb . 'GB' : ''),
+    //                 'sku_ghi_nhan' => $variant->sku,
+    //             ]);
+                
+    //             // Cập nhật tồn kho
+    //             $variant->ton_kho -= $item['quantity'];
+    //             $variant->save();
+    //         }
+            
+    //         // 4. XÓA GIỎ HÀNG (Session)
+    //         $request->session()->forget('cart');
+            
+    //         DB::commit();
+
+    //         // 5. GỬI EMAIL XÁC NHẬN ĐƠN HÀNG (SAU KHI COMMIT)
+    //         if ($customerEmail) {
+    //             // Load mối quan hệ chiTiet để Email Template có thể sử dụng
+    //             $order->load('chiTiet'); 
+                
+    //             // Sử dụng queue để tránh làm chậm trang web
+    //             //Mail::to($customerEmail)->queue(new OrderConfirmationMail($order)); 
+    //             //dùng php artisan queue:work chạy song song
+
+    //             //dùng send để gửi ngay lập tức:
+    //             Mail::to($customerEmail)->send(new OrderConfirmationMail($order));
+    //         }
+
+    //         // 6. CHUYỂN HƯỚNG THÀNH CÔNG
+    //         return redirect()->route('checkout.success', ['order_ma' => $order->ma])
+    //                          ->with('success', 'Đặt hàng thành công! Vui lòng kiểm tra email xác nhận.');
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Lỗi xử lý thanh toán: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
+    //         return back()->withInput()
+    //                      ->with('error', 'Có lỗi xảy ra trong quá trình xử lý đơn hàng. Vui lòng thử lại. Chi tiết: ' . $e->getMessage());
+    //     }
+    // }
+
 }

@@ -112,6 +112,9 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
     Route::get('/products', [StaffController::class, 'products'])->name('products');
     Route::get('/products/{id}/edit', [StaffController::class, 'editProduct'])->name('products.edit');
     Route::put('/products/{id}', [StaffController::class, 'updateProduct'])->name('products.update');
+    // BỔ SUNG: FORM THÊM BIẾN THỂ MỚI
+    Route::get('/products/{id}/variants/create', [StaffController::class, 'createVariant'])->name('products.variants.create');
+    Route::post('/products/{id}/variants', [StaffController::class, 'storeVariant'])->name('products.variants.store');
 
     Route::post('/products/{id}/toggle-flag', [StaffController::class, 'toggleProductFlag'])->name('products.toggle_flag');
 
@@ -121,6 +124,7 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
 
     Route::get('/reports', [StaffController::class, 'reports'])->name('reports');
     Route::get('/reports/export', [StaffController::class, 'exportReport'])->name('reports.export');
+    Route::get('/reports/confirm-export', [StaffController::class, 'confirmExport'])->name('reports.confirm.export');
 
     // BỔ SUNG: THÔNG TIN CÁ NHÂN NHÂN VIÊN
     Route::get('/profile', [StaffController::class, 'profile'])->name('profile');
@@ -246,4 +250,20 @@ Route::get('/khuyen-mai', [HomeController::class, 'promotions'])->name('promotio
 Route::prefix('tin-tuc')->name('news.')->group(function () {
     Route::get('/', [NewsController::class, 'index'])->name('index');
     Route::get('/{slug}', [NewsController::class, 'show'])->name('show');
+});
+
+
+// Ví dụ: Tạo route test nhanh trong web.php
+use Illuminate\Support\Facades\Mail;
+
+Route::get('/test-mail', function () {
+    try {
+        Mail::raw('Test email from Laravel.', function ($message) {
+            $message->to('chemgiophimanh@gmail.com') // Thay thế bằng email của bạn
+                    ->subject('Kiểm tra kết nối Mail');
+        });
+        return "Email đã được gửi (kiểm tra hộp thư đến/spam).";
+    } catch (\Exception $e) {
+        return "Lỗi gửi email: " . $e->getMessage();
+    }
 });

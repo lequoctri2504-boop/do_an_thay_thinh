@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str; 
 
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use app\Exports\StaffRevenueExport;
+
 class StaffController extends Controller
 {
     /**
@@ -309,13 +313,14 @@ class StaffController extends Controller
 // }
 // app/Http/Controllers/StaffController.php
 
+
+
 public function updateProduct(Request $request, $id)
 {
     if ($redirect = $this->ensureStaff()) return $redirect;
 
     $product = SanPham::whereNull('deleted_at')->findOrFail($id);
 
-    // Cần phải có thuộc tính 'thuong_hieu_id' trong validation để khớp với hidden input trong form
     $request->validate([
         'ten' => 'required|max:191',
         'thuong_hieu_id' => 'required|exists:thuong_hieu,id',
@@ -329,20 +334,25 @@ public function updateProduct(Request $request, $id)
         'new_images.*' => 'nullable|image|max:2048',       
         
         // Validation cho Biến thể hiện có (variants)
-        'variants' => 'array',
+        'variants' => 'nullable|array',
         'variants.*.id' => 'required|exists:bien_the_san_pham,id',
         'variants.*.sku' => 'required|max:64',
         'variants.*.gia' => 'required|numeric|min:0',
         'variants.*.ton_kho' => 'required|integer|min:0',
+        'variants.*.mau_sac' => 'nullable|string|max:64',
         'variants.*.dung_luong_gb' => 'nullable|integer', 
         
         // Validation cho Biến thể mới (new_variants)
-        'new_variants' => 'array',
-        // Validate SKU mới không trùng với các SKU đã tồn tại trong DB
-        'new_variants.*.sku' => 'required|unique:bien_the_san_pham,sku|max:64', 
+        'new_variants' => 'nullable|array',
+        'new_variants.*.sku' => 'required|unique:bien_the_san_pham,sku|max:64',
         'new_variants.*.gia' => 'required|numeric|min:0',
         'new_variants.*.ton_kho' => 'required|integer|min:0',
+        'new_variants.*.mau_sac' => 'nullable|string|max:64',
         'new_variants.*.dung_luong_gb' => 'nullable|integer', 
+
+        // Validation cho xóa ảnh phụ
+        'delete_images' => 'nullable|array',
+        'delete_images.*' => 'exists:san_pham_anh,id',
     ]);
 
     DB::beginTransaction();
@@ -351,7 +361,6 @@ public function updateProduct(Request $request, $id)
         // 1. Cập nhật thông tin chung của sản phẩm
         $product->ten = $request->ten;
         $product->slug = Str::slug($request->ten) . '-' . $product->id; 
-        $product->thuong_hieu_id = $request->thuong_hieu_id;
         $product->mo_ta_ngan = $request->mo_ta_ngan;
         $product->mo_ta_day_du = $request->mo_ta_day_du;
         $product->hien_thi = $request->hien_thi;
@@ -389,13 +398,12 @@ public function updateProduct(Request $request, $id)
                         'ton_kho' => $variantData['ton_kho'],
                         'mau_sac' => $variantData['mau_sac'] ?? null,
                         'dung_luong_gb' => $variantData['dung_luong_gb'] ?? null,
-                        'updated_at' => now(),
                      ]);
                 }
             }
         }
 
-        // C. Thêm biến thể mới (Lấy từ new_variants)
+        // C. Thêm biến thể mới
         if ($request->has('new_variants')) {
              foreach ($request->new_variants as $newVariantData) {
                 BienTheSanPham::create([ 
@@ -412,15 +420,17 @@ public function updateProduct(Request $request, $id)
         
         // 3. Xử lý Hình ảnh phụ (Thêm mới và Xóa)
         
+        // Xóa ảnh phụ cũ
         if ($request->has('delete_images')) { 
-            SanPhamAnh::whereIn('id', $request->delete_images)->delete(); 
+            \App\Models\SanPhamAnh::whereIn('id', $request->delete_images)->delete(); 
         }
         
+        // Thêm ảnh phụ mới
         if ($request->hasFile('new_images')) {
             foreach ($request->file('new_images') as $file) {
                 $filename = time() . '_' . $file->getClientOriginalName(); 
                 $file->move(public_path('uploads'), $filename); 
-                SanPhamAnh::create(['san_pham_id' => $product->id, 'url' => $filename]);
+                \App\Models\SanPhamAnh::create(['san_pham_id' => $product->id, 'url' => $filename]);
             }
         }
 
@@ -430,7 +440,6 @@ public function updateProduct(Request $request, $id)
 
     } catch (\Exception $e) {
         DB::rollBack();
-        // Lỗi xảy ra -> Rollback và báo lỗi
         return back()->with('error', 'Lỗi cập nhật sản phẩm: ' . $e->getMessage())->withInput();
     }
 }
@@ -497,12 +506,13 @@ public function updateProduct(Request $request, $id)
     //         'selectedQuick', 'queryStartFormatted', 'queryEndFormatted'
     //     ));
     // }
-    // BÁO CÁO - THỐNG KÊ (STAFF)
-    public function reports(Request $request)
+    
+   public function reports(Request $request)
     {
-        if ($redirect = $this->ensureStaff()) {
-            return $redirect;
-        }
+        // Giữ lại logic kiểm tra Staff (nếu bạn có)
+        // if ($redirect = $this->ensureStaff()) {
+        //     return $redirect;
+        // }
         
         $currentDate = Carbon::now();
         $queryStart = null;
@@ -538,51 +548,97 @@ public function updateProduct(Request $request, $id)
         $queryEndFormatted = $queryEnd->format('Y-m-d');
 
 
-        // --- 2. Tính toán thống kê ---
-        $tongDoanhThu = DonHang::where('trang_thai', 'HOAN_THANH')
+        // --- 2. Tính toán thống kê Tổng quát ---
+        $tongDonHangHoanThanh = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
+                                      ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+                                      ->count();
+                                      
+        $tongDoanhThu = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
                               ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
                               ->sum('thanh_tien');
         
-        $tongDonHang = DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
+        $tongDonHang = \App\Models\DonHang::whereBetween('ngay_dat', [$queryStart, $queryEnd])->count();
         
-        $khachHangMoi = User::where('vai_tro', 'KHACH_HANG')
+        $khachHangMoi = \App\Models\User::where('vai_tro', 'KHACH_HANG') // Dùng NguoiDung nếu User không phải là Model của bạn
                             ->whereBetween('created_at', [$queryStart, $queryEnd])
                             ->count();
         
-        $donDangXuLy = DonHang::where('trang_thai', 'DANG_XU_LY')
+        $donDangXuLy = \App\Models\DonHang::where('trang_thai', 'DANG_XU_LY')
                             ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
                             ->count();
 
-        // TÍNH TOÁN TOP 5 SẢN PHẨM BÁN CHẠY NHẤT (Bán ra)
-        $topSellingProducts = \App\Models\DonHangChiTiet::select(
+        // --- 3. Thống kê Chuyên sâu ---
+        $completedOrderIds = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
+                                    ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+                                    ->pluck('id');
+
+        // BÁN CHẠY & BÁN CHẬM (Lấy Top 5 và Bottom 5)
+        $productSales = \App\Models\DonHangChiTiet::select(
             'san_pham_id', 
             DB::raw('SUM(so_luong) as tong_so_luong_ban'), 
             DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
         )
-            ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
-            ->where('don_hang.trang_thai', 'HOAN_THANH')
-            ->whereBetween('don_hang.ngay_dat', [$queryStart, $queryEnd])
+            ->whereIn('don_hang_id', $completedOrderIds)
             ->groupBy('san_pham_id')
             ->orderBy('tong_so_luong_ban', 'desc')
-            ->with(['sanPham' => function($q) { 
-                $q->withTrashed(); // Để lấy tên sản phẩm ngay cả khi nó bị xóa (optional)
-            }])
-            ->limit(5)
+            ->with(['sanPham' => function($q) { $q->withTrashed(); }]) // Giả định quan hệ sanPham() tồn tại
             ->get()
             ->map(function($item) {
-                // Đảm bảo lấy được tên sản phẩm
                 $item->ten = $item->sanPham->ten ?? 'Sản phẩm đã xóa/Không rõ';
                 return $item;
             });
 
-        $recentOrders = DonHang::with('nguoiDung')
-                            ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
-                            ->orderBy('ngay_dat', 'desc')
-                            ->limit(5)
-                            ->get();
-        
+        $topSellingProducts = $productSales->take(5);
+        $bottomSellingProducts = $productSales->count() > 5 ? $productSales->sortBy('tong_so_luong_ban')->take(5) : collect();
+
+        // DOANH THU THEO DÒNG MÁY (DANH MỤC) - FIX: SỬ DỤNG BẢNG TRUNG GIAN san_pham_danh_muc
+        $revenueByCategory = \App\Models\DonHangChiTiet::select(
+            'danh_muc.ten AS ten_danh_muc', 
+            DB::raw('SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
+        )
+            ->join('san_pham_danh_muc', 'don_hang_chi_tiet.san_pham_id', '=', 'san_pham_danh_muc.san_pham_id')
+            ->join('danh_muc', 'san_pham_danh_muc.danh_muc_id', '=', 'danh_muc.id')
+            ->whereIn('don_hang_id', $completedOrderIds)
+            // Phải Group by danh_muc.ten (chỉ lấy 1 danh mục/sản phẩm nếu có nhiều)
+            ->groupBy('danh_muc.ten') 
+            ->orderBy('tong_doanh_thu', 'desc')
+            ->get();
+            
+        // SẢN PHẨM TỒN KHO NHIỀU NHẤT (Biến thể)
+        $topStockProducts = \App\Models\BienTheSanPham::select(
+            'bien_the_san_pham.id', 
+            'bien_the_san_pham.sku', 
+            'bien_the_san_pham.ton_kho', 
+            'san_pham.ten AS ten_san_pham',
+            'bien_the_san_pham.mau_sac',
+            'bien_the_san_pham.dung_luong_gb'
+        )
+            ->join('san_pham', 'bien_the_san_pham.san_pham_id', '=', 'san_pham.id')
+            ->orderBy('bien_the_san_pham.ton_kho', 'desc')
+            ->limit(5)
+            ->get();
+
+        // SỐ LƯỢNG BÁN THEO TỪNG MẪU MÁY (BIẾN THỂ)
+        $salesByVariant = \App\Models\DonHangChiTiet::select(
+            'don_hang_chi_tiet.bien_the_id', // Thay bien_the_san_pham_id bằng bien_the_id
+            DB::raw('SUM(don_hang_chi_tiet.so_luong) as tong_so_luong_ban'), 
+            'san_pham.ten AS ten_san_pham',
+            'bien_the_san_pham.sku',
+            'bien_the_san_pham.mau_sac',
+            'bien_the_san_pham.dung_luong_gb'
+        )
+            ->join('bien_the_san_pham', 'don_hang_chi_tiet.bien_the_id', '=', 'bien_the_san_pham.id') // Sửa join key
+            ->join('san_pham', 'bien_the_san_pham.san_pham_id', '=', 'san_pham.id')
+            ->whereIn('don_hang_id', $completedOrderIds)
+            ->groupBy('don_hang_chi_tiet.bien_the_id', 'san_pham.ten', 'bien_the_san_pham.sku', 'bien_the_san_pham.mau_sac', 'bien_the_san_pham.dung_luong_gb')
+            ->orderBy('tong_so_luong_ban', 'desc')
+            ->limit(10) // Lấy top 10 biến thể bán chạy nhất
+            ->get();
+
+
         return view('staff.reports', compact(
-            'tongDoanhThu', 'tongDonHang', 'khachHangMoi', 'donDangXuLy', 'topSellingProducts', 'recentOrders',
+            'tongDoanhThu', 'tongDonHang', 'khachHangMoi', 'donDangXuLy', 'tongDonHangHoanThanh',
+            'topSellingProducts', 'bottomSellingProducts', 'revenueByCategory', 'topStockProducts', 'salesByVariant',
             'selectedQuick', 'queryStartFormatted', 'queryEndFormatted'
         ));
     }
@@ -823,18 +879,216 @@ public function updateProduct(Request $request, $id)
         }
     }
 
+    // public function exportReport(Request $request)
+    // {
+    //     if ($redirect = $this->ensureStaff()) {
+    //         return $redirect;
+    //     }
+
+    //     // Tái sử dụng logic lọc thời gian
+    //     $currentDate = Carbon::now();
+    //     $queryStart = null;
+    //     $queryEnd = null;
+    //     $selectedQuick = $request->input('quick_select', 'this_month');
+        
+    //     switch ($selectedQuick) {
+    //         case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case '30_days': $queryStart = $currentDate->copy()->subDays(29)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case 'this_month': $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case 'this_year': $queryStart = $currentDate->copy()->startOfYear(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //         case 'custom':
+    //             if ($request->filled('start_date') && $request->filled('end_date')) {
+    //                 $queryStart = Carbon::parse($request->start_date)->startOfDay();
+    //                 $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+    //             }
+    //             break;
+    //         default: $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+    //     }
+
+    //     if (is_null($queryStart) || is_null($queryEnd)) {
+    //         $queryStart = $currentDate->copy()->startOfMonth();
+    //         $queryEnd = $currentDate->copy()->endOfDay();
+    //     }
+        
+    //     // --- 1. LẤY DỮ LIỆU ĐỂ XUẤT ---
+        
+    //     // Lấy tất cả đơn hàng HOÀN THÀNH trong kỳ (dữ liệu chính cho báo cáo)
+    //     $ordersToReport = DonHang::with(['nguoiDung', 'chiTiet'])
+    //                             ->where('trang_thai', 'HOAN_THANH')
+    //                             ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+    //                             ->get();
+                                
+    //     // Lấy dữ liệu Top Selling (nếu cần xuất)
+    //     $topSellingProducts = \App\Models\DonHangChiTiet::select(
+    //         DB::raw('san_pham_id, SUM(so_luong) as tong_so_luong_ban, SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
+    //     )
+    //         ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
+    //         ->where('don_hang.trang_thai', 'HOAN_THANH')
+    //         ->whereBetween('don_hang.ngay_dat', [$queryStart, $queryEnd])
+    //         ->groupBy('san_pham_id')
+    //         ->orderBy('tong_so_luong_ban', 'desc')
+    //         ->with('sanPham')
+    //         ->get();
+
+
+    //     $dateRange = $queryStart->format('Ymd') . '_to_' . $queryEnd->format('Ymd');
+    //     $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.xlsx'; // Chọn định dạng .xlsx
+
+    //     // --- 2. LOGIC XUẤT FILE (PLACEHOLDER) ---
+        
+    //     // BƯỚC CẦN THIẾT: Bạn cần cài đặt thư viện Maatwebsite/Laravel Excel.
+    //     // Chạy lệnh: composer require maatwebsite/excel
+        
+    //     // Ví dụ xuất Excel (Maatwebsite/Laravel Excel):
+    //     // return Excel::download(new \App\Exports\RevenueReportExport($ordersToReport, $topSellingProducts), $fileName);
+        
+    //     // Tạm thời, chúng ta sẽ trả về một thông báo và dữ liệu thô:
+    //     return response()->json([
+    //         'success' => false,
+    //         'message' => 'Tính năng xuất file đang chờ thư viện Excel được cài đặt (Maatwebsite/Excel).',
+    //         'orders_count' => $ordersToReport->count(),
+    //         'start_date' => $queryStart->format('Y-m-d'),
+    //         'end_date' => $queryEnd->format('Y-m-d'),
+    //         // 'data_sample' => $ordersToReport->take(2) // Có thể tạm thời comment lại để tránh lỗi đệ quy JSON
+    //     ]);
+    // }
+        /**
+     * Xử lý xuất báo cáo ra file Excel hoặc PDF.
+     */
+    
+
+    /**
+     * Hiển thị form thêm biến thể mới (Và ảnh phụ cho biến thể đó)
+     */
+    public function createVariant($id)
+    {
+        if ($redirect = $this->ensureStaff()) return $redirect;
+        
+        $product = SanPham::whereNull('deleted_at')->findOrFail($id);
+
+        return view('staff.products.variants.create', compact('product'));
+    }
+
+    /**
+     * Xử lý lưu biến thể mới và ảnh phụ (Nếu có)
+     */
+    public function storeVariant(Request $request, $id)
+    {
+        if ($redirect = $this->ensureStaff()) return $redirect;
+        
+        $product = SanPham::whereNull('deleted_at')->findOrFail($id);
+
+        $request->validate([
+            'sku' => 'required|unique:bien_the_san_pham,sku|max:64',
+            'gia' => 'required|numeric|min:0',
+            'ton_kho' => 'required|integer|min:0',
+            'mau_sac' => 'nullable|string|max:64',
+            'dung_luong_gb' => 'nullable|integer',
+            'new_images.*' => 'nullable|image|max:2048', // Ảnh phụ cho biến thể này
+        ]);
+        
+        DB::beginTransaction();
+        try {
+            // 1. Tạo Biến thể mới
+            $variant = BienTheSanPham::create([ 
+                'san_pham_id' => $product->id, 
+                'sku' => $request->sku, 
+                'gia' => $request->gia, 
+                'gia_so_sanh' => $request->gia_so_sanh ?? null,
+                'ton_kho' => $request->ton_kho, 
+                'mau_sac' => $request->mau_sac ?? null, 
+                'dung_luong_gb' => $request->dung_luong_gb ?? null, 
+                'dang_ban' => 1 
+            ]);
+            
+            // 2. Xử lý Ảnh phụ (Tạm thời lưu vào bảng SanPhamAnh như ảnh chung)
+            if ($request->hasFile('new_images')) {
+                 $thuTu = $product->sanPhamAnh->max('thu_tu') + 1; // Lấy thứ tự tiếp theo
+                 foreach ($request->file('new_images') as $file) {
+                    $filename = time() . '_' . $file->getClientOriginalName(); 
+                    $file->move(public_path('uploads'), $filename); 
+                    \App\Models\SanPhamAnh::create([
+                        'san_pham_id' => $product->id, 
+                        'url' => $filename,
+                        'thu_tu' => $thuTu++ 
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('staff.products.edit', $product->id)
+                             ->with('success', 'Đã thêm biến thể SKU: ' . $variant->sku . ' thành công!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Lỗi khi thêm biến thể: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function confirmExport(Request $request)
+    {
+        if ($redirect = $this->ensureStaff()) {
+            return $redirect;
+        }
+
+        $currentDate = Carbon::now();
+        $queryStart = null;
+        $queryEnd = null;
+        $selectedQuick = $request->input('quick_select', 'this_month');
+        
+        // --- Tái sử dụng logic tính toán ngày ---
+        switch ($selectedQuick) {
+            case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+            case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+            case '30_days': $queryStart = $currentDate->copy()->subDays(29)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+            case 'this_month': $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+            case 'this_year': $queryStart = $currentDate->copy()->startOfYear(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+            case 'custom':
+                if ($request->filled('start_date') && $request->filled('end_date')) {
+                    $queryStart = Carbon::parse($request->start_date)->startOfDay();
+                    $queryEnd = Carbon::parse($request->end_date)->endOfDay();
+                }
+                break;
+            default: $queryStart = $currentDate->copy()->startOfMonth(); $queryEnd = $currentDate->copy()->endOfDay(); break;
+        }
+        
+        if (is_null($queryStart) || is_null($queryEnd)) {
+            $queryStart = $currentDate->copy()->startOfMonth();
+            $queryEnd = $currentDate->copy()->endOfDay();
+            $selectedQuick = 'this_month';
+        }
+        
+        $ordersCount = \App\Models\DonHang::where('trang_thai', 'HOAN_THANH')
+                                        ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
+                                        ->count();
+
+        return view('staff.reports.confirm-export', compact(
+            'queryStart', 
+            'queryEnd', 
+            'selectedQuick', 
+            'ordersCount',
+            'request' // Truyền request gốc để giữ lại các tham số ẩn
+        ));
+    }
+
+    /**
+     * Xử lý xuất báo cáo ra file Excel hoặc PDF.
+     */
     public function exportReport(Request $request)
     {
         if ($redirect = $this->ensureStaff()) {
             return $redirect;
         }
 
-        // Tái sử dụng logic lọc thời gian
+        // 1. Tái sử dụng logic lọc thời gian
         $currentDate = Carbon::now();
         $queryStart = null;
         $queryEnd = null;
         $selectedQuick = $request->input('quick_select', 'this_month');
         
+        // --- Logic Tính Toán Ngày ---
         switch ($selectedQuick) {
             case 'today': $queryStart = $currentDate->copy()->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
             case '7_days': $queryStart = $currentDate->copy()->subDays(6)->startOfDay(); $queryEnd = $currentDate->copy()->endOfDay(); break;
@@ -855,46 +1109,38 @@ public function updateProduct(Request $request, $id)
             $queryEnd = $currentDate->copy()->endOfDay();
         }
         
-        // --- 1. LẤY DỮ LIỆU ĐỂ XUẤT ---
-        
-        // Lấy tất cả đơn hàng HOÀN THÀNH trong kỳ (dữ liệu chính cho báo cáo)
-        $ordersToReport = DonHang::with(['nguoiDung', 'chiTiet'])
+        // 2. LẤY DỮ LIỆU ĐỂ XUẤT (Chỉ đơn hàng HOÀN THÀNH)
+        $ordersToReport = DonHang::with(['nguoiDung', 'chiTiet.sanPham'])
                                 ->where('trang_thai', 'HOAN_THANH')
                                 ->whereBetween('ngay_dat', [$queryStart, $queryEnd])
                                 ->get();
                                 
-        // Lấy dữ liệu Top Selling (nếu cần xuất)
-        $topSellingProducts = \App\Models\DonHangChiTiet::select(
-            DB::raw('san_pham_id, SUM(so_luong) as tong_so_luong_ban, SUM(don_hang_chi_tiet.thanh_tien) as tong_doanh_thu')
-        )
-            ->join('don_hang', 'don_hang_chi_tiet.don_hang_id', '=', 'don_hang.id')
-            ->where('don_hang.trang_thai', 'HOAN_THANH')
-            ->whereBetween('don_hang.ngay_dat', [$queryStart, $queryEnd])
-            ->groupBy('san_pham_id')
-            ->orderBy('tong_so_luong_ban', 'desc')
-            ->with('sanPham')
-            ->get();
-
-
+        // 3. XỬ LÝ EXPORT
         $dateRange = $queryStart->format('Ymd') . '_to_' . $queryEnd->format('Ymd');
-        $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.xlsx'; // Chọn định dạng .xlsx
+        $exportType = $request->input('type', 'excel'); 
+        
+        if ($exportType === 'excel') {
+            $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.xlsx';
+            
+            // SỬ DỤNG LỚP EXPORT VỪA TẠO
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\StaffRevenueExport($ordersToReport, $queryStart, $queryEnd), 
+                $fileName
+            );
+        } elseif ($exportType === 'pdf') {
+            $fileName = 'BaoCaoDoanhThu_' . $dateRange . '.pdf';
+            
+            // SỬ DỤNG LỚP PDF VỪA TẠO
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.staff_revenue_pdf', [
+                'ordersToReport' => $ordersToReport,
+                'startDate' => $queryStart,
+                'endDate' => $queryEnd,
+            ]);
+            // Nếu có lỗi, thử setting font cho PDF
+            // $pdf->setOptions(['defaultFont' => 'sans-serif']); 
+            return $pdf->download($fileName);
+        }
 
-        // --- 2. LOGIC XUẤT FILE (PLACEHOLDER) ---
-        
-        // BƯỚC CẦN THIẾT: Bạn cần cài đặt thư viện Maatwebsite/Laravel Excel.
-        // Chạy lệnh: composer require maatwebsite/excel
-        
-        // Ví dụ xuất Excel (Maatwebsite/Laravel Excel):
-        // return Excel::download(new \App\Exports\RevenueReportExport($ordersToReport, $topSellingProducts), $fileName);
-        
-        // Tạm thời, chúng ta sẽ trả về một thông báo và dữ liệu thô:
-        return response()->json([
-            'success' => false,
-            'message' => 'Tính năng xuất file đang chờ thư viện Excel được cài đặt (Maatwebsite/Excel).',
-            'orders_count' => $ordersToReport->count(),
-            'start_date' => $queryStart->format('Y-m-d'),
-            'end_date' => $queryEnd->format('Y-m-d'),
-            // 'data_sample' => $ordersToReport->take(2) // Có thể tạm thời comment lại để tránh lỗi đệ quy JSON
-        ]);
+        return back()->with('error', 'Định dạng xuất file không hợp lệ.');
     }
 }
