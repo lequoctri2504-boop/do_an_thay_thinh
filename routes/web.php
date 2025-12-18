@@ -249,6 +249,7 @@ Route::get('/chinh-sach-bao-mat', fn() => view('pages.privacy'))->name('privacy'
 Route::get('/dieu-khoan-su-dung', fn() => view('pages.terms'))->name('terms');
 // Route::get('/khuyen-mai', fn() => view('pages.promotions'))->name('promotions');
 Route::get('/khuyen-mai', [HomeController::class, 'promotions'])->name('promotions');
+Route::get('/thuong-hieu', [HomeController::class, 'allBrands'])->name('brands.all');
 
 // ==================== TIN TỨC CÔNG NGHỆ ====================
 Route::prefix('tin-tuc')->name('news.')->group(function () {

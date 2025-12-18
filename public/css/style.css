@@ -1094,7 +1094,40 @@ input, select, textarea {
     font-size: 13px;
     color: var(--text-light);
 }
+/* Nút màu tròn */
+.color-circle {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
 
+/* Hiệu ứng khi được chọn */
+.btn-check:checked + .color-circle {
+    border-color: #ff0000; /* Màu đỏ vòng ngoài khi chọn giống hình bạn gửi */
+    box-shadow: 0 0 0 2px #fff inset;
+}
+
+/* Hiệu ứng vòng tròn đôi khi active */
+.btn-check:checked + .color-circle::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid #ff0000;
+    border-radius: 50%;
+}
+
+.capacity-label {
+    min-width: 80px;
+    border-radius: 8px;
+}
 /* Product Tabs */
 .product-tabs {
     margin-top: 40px;

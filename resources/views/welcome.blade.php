@@ -94,7 +94,7 @@
     </div>
 </section>
 
-<section class="hot-brands">
+<!-- <section class="hot-brands">
     <div class="container">
         <div class="section-header">
             <h2><i class="fas fa-fire"></i> THƯƠNG HIỆU NỔI BẬT</h2>
@@ -114,6 +114,31 @@
                 <p class="text-center" style="grid-column: 1 / -1; padding: 20px;">Chưa có thương hiệu nào được thêm.</p>
             @endforelse
             
+        </div>
+    </div>
+</section> -->
+<section class="hot-brands">
+    <div class="container">
+        <div class="section-header d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-fire"></i> THƯƠNG HIỆU NỔI BẬT</h2>
+            <a href="{{ route('brands.all') }}" class="btn-view-all" style="text-decoration: none; color: #ff0000ff; font-weight: bold; font-size: 14px;">
+                Xem tất cả <i class="fas fa-angle-right"></i>
+            </a>
+        </div>
+        <div class="brands-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+            @forelse($brands as $brand)
+                @php
+                    
+                    $logoPath = $brand->hinh_anh ? asset('images/brands/' . $brand->hinh_anh) : 'https://via.placeholder.com/80x40?text=LOGO';
+                @endphp
+
+                <a href="{{ route('products.index', ['brand' => $brand->slug]) }}" class="brand-card" title="{{ $brand->ten }}">
+                    <img src="{{ $logoPath }}" alt="{{ $brand->ten }}" style="max-height: 40px; object-fit: contain;">
+                    <span>{{ $brand->ten }}</span>
+                </a>
+            @empty
+                <p class="text-center" style="grid-column: 1 / -1; padding: 20px;">Chưa có thương hiệu nào được thêm.</p>
+            @endforelse
         </div>
     </div>
 </section>
@@ -301,6 +326,40 @@
         .arrow-right {
             right: 20px;
         }
+        .brands-grid {
+        margin-top: 20px;
+    }
+    .brand-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 15px;
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: #333;
+    }
+    .brand-card:hover {
+        border-color: #ff4d4d;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .brand-card img {
+        margin-bottom: 8px;
+    }
+    .brand-card span {
+        font-weight: bold;
+        font-size: 13px;
+    }
+    
+    @media (max-width: 768px) {
+        .brands-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
     </style>
 @endpush
 

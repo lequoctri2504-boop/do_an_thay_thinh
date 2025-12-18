@@ -19,7 +19,13 @@ class HomeController extends Controller
     public function index()
     {
         $categories = DanhMuc::whereNull('deleted_at')->orderBy('ten', 'asc')->get();
-        $brands = ThuongHieu::whereNull('deleted_at')->orderBy('ten', 'asc')->get();
+        // $brands = ThuongHieu::whereNull('deleted_at')->orderBy('ten', 'asc')->get();
+        $brands = \App\Models\ThuongHieu::whereHas('sanPham.danhMuc', function($query) {
+        $query->where('ten', 'like', '%Điện thoại%');
+    })
+    ->whereNull('deleted_at')
+    ->take(5) // Chỉ lấy 5 thương hiệu đầu tiên
+    ->get();
         
         // DỮ LIỆU BANNER MÔ PHỎNG (Sử dụng 3 ảnh có sẵn)
         $banners = [
@@ -101,11 +107,14 @@ class HomeController extends Controller
                                 ->count();
             Session::put('wishlist_count', $wishlistCount);
         }
-
+       
         // Truyền thêm newsArticles vào view
         return view('welcome', compact('categories', 'brands', 'flashSaleProducts', 'featuredProducts', 'cartCount', 'wishlistCount', 'banners', 'newsArticles'));
     }
-
+    public function allBrands() {
+    $brands = \App\Models\ThuongHieu::whereNull('deleted_at')->get();
+    return view('frontend.brands.index', compact('brands'));
+}
     public function promotions()
     {
         $currentDate = Carbon::now();

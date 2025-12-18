@@ -125,7 +125,7 @@
                     </a>
                     <a href="{{ route('staff.customers') }}" class="quick-btn-item">
                         <span class="icon-circle bg-yellow-soft"><i class="fas fa-user-plus"></i></span>
-                        <span>Thêm khách hàng</span>
+                        <span>xem thông tin khách hàng</span>
                     </a>
                 </div>
             </div>
